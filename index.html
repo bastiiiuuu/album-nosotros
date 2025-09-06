@@ -1,0 +1,888 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Álbum 💑 — Nosotros</title>
+<link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
+<meta name="description" content="Álbum romántico interactivo: contador, te amo en muchos idiomas, estrellas fugaces, viaje cósmico, reloj de arena infinito y música." />
+<style>
+  :root{
+    --bg:#0b0b10; --txt:#f2f3f7; --muted:#b9bbca; --card:#15151b; --border:#23232c;
+    --accent:#ff6b9e; --ok:#79ffa8; --pastel:#f7cfe1; --rose:#ffeaf3; 
+    --gold:#d6ad60; --gold2:#ad8b3d; --gold3:#f3d88f;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--txt);
+    font-family:'Great Vibes', cursive; letter-spacing:.3px;
+    display:flex; align-items:stretch; justify-content:center;
+  }
+  p,small,button,input,span,div,li { font-size:clamp(18px,2.2vw,24px); }
+  h1,h2,h3 { font-weight:400; line-height:1.15; }
+  h1{font-size:clamp(28px,4vw,44px); margin:0}
+  h2{font-size:clamp(24px,3.6vw,36px); margin:0}
+  h3{font-size:clamp(22px,3.2vw,30px); margin:0}
+
+  .app{width:100%; max-width:1100px; padding:14px; display:flex; flex-direction:column; gap:10px}
+  header{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap}
+  .nav{display:flex; gap:8px; align-items:center}
+  .btn{
+    border:1px solid var(--border); background:#121218; color:var(--txt);
+    padding:8px 12px; border-radius:12px; cursor:pointer; font:inherit;
+    transition:.15s transform ease,.15s background ease; user-select:none;
+  }
+  .btn:hover{transform:translateY(-1px); background:#171723}
+  .btn-ico{ padding:6px 10px }
+  #pager{color:var(--muted)}
+
+  .page{
+    position:relative; border:1px solid var(--border); border-radius:16px;
+    background:var(--card); min-height:64vh; display:none;
+    overflow:auto;               /* permitir scroll en P1/P2 */
+  }
+  .page.active{display:block}
+  /* ocultar overflow sólo en páginas con canvas a pantalla completa */
+  .page.p3,.page.p4{ overflow:hidden; }
+
+  .page-inner{padding:16px}
+  .muted{color:var(--muted)} .heart{color:var(--accent)}
+  .footer{display:flex; justify-content:space-between; color:var(--muted); flex-wrap:wrap; gap:8px}
+
+  /* Player */
+  .player{
+    display:flex; align-items:center; gap:8px; border:1px solid var(--border);
+    background:#121218; padding:6px 10px; border-radius:12px;
+  }
+  #vol{ width:120px; accent-color: var(--accent); }
+
+  /* Grid general P1 */
+  .grid{display:grid; gap:12px; grid-template-columns:repeat(2,minmax(0,1fr))}
+  @media (max-width:900px){ .grid{grid-template-columns:1fr} }
+  .panel{
+    background:linear-gradient(180deg, #1a1a20 0%, #131317 100%);
+    border:1px solid #24242b; border-radius:12px; padding:14px;
+  }
+
+  /* P1 contador */
+  .live{display:flex; align-items:center; justify-content:center; text-align:center; min-height:160px}
+  .big{font-size:clamp(22px,4.6vw,38px); line-height:1.2; letter-spacing:.3px}
+  .units{display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:10px}
+  .chip{font-variant-numeric:tabular-nums; background:#101016; border:1px solid #262634; border-radius:999px; padding:6px 10px}
+  .stats{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:10px}
+  @media (max-width:900px){ .stats{grid-template-columns:1fr} }
+  .stat{background:#101015; border:1px solid #262634; border-radius:12px; padding:12px}
+  .stat .k{font-size:clamp(18px,2.8vw,26px); font-variant-numeric:tabular-nums}
+
+  /* Carta oculta modal */
+  .modal{position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:50}
+  .modal.show{display:flex}
+  .modal__backdrop{position:absolute; inset:0; background:rgba(0,0,0,.55); backdrop-filter:blur(2px)}
+  .modal__dialog{
+    position:relative; width:min(880px,92vw); max-height:86vh; overflow:auto;
+    background:#15151b; border:1px solid var(--border); border-radius:16px; padding:16px;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);
+  }
+  .modal__close{position:absolute; top:8px; right:8px}
+  .modal__paper{
+    margin-top:6px; padding:18px; color:#241a1a; background:#fff6f0; border-radius:12px;
+    border:1px solid #f0dfd6;
+    background-image:
+      radial-gradient(rgba(0,0,0,.04) 1px, transparent 1px),
+      linear-gradient(transparent 24px, rgba(0,0,0,.05) 25px);
+    background-size: 6px 6px, 100% 25px;
+    background-position: 0 0, 0 0;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.6);
+    font-size:clamp(18px,2.2vw,24px); line-height:1.55;
+  }
+  .modal__paper, .modal__paper p, .modal__paper h2{font-family:'Great Vibes', cursive}
+  .modal__paper p{white-space:pre-wrap}
+
+  /* P2 — pastel */
+  .page.p2{background:linear-gradient(180deg, var(--pastel), var(--rose))}
+  .love-grid{display:grid; gap:12px; grid-template-columns:repeat(6,1fr); padding:12px}
+  @media (max-width:1100px){ .love-grid{grid-template-columns:repeat(4,1fr)} }
+  @media (max-width:640px){ .love-grid{grid-template-columns:repeat(2,1fr)} }
+  .love{
+    background:rgba(255,255,255,.55); border:1px solid rgba(0,0,0,.06); backdrop-filter:blur(4px);
+    padding:14px; border-radius:14px; text-align:center; color:#5c1841; font-weight:600;
+    box-shadow:0 10px 24px rgba(0,0,0,.08);
+  }
+  .love small{display:block; color:#7b3a58; font-weight:500; margin-top:4px}
+  .reasons{margin:8px 16px; display:grid; gap:8px; grid-template-columns:repeat(2,minmax(0,1fr))}
+  @media (max-width:800px){ .reasons{grid-template-columns:1fr} }
+  .reason{background:rgba(255,255,255,.7); border:1px solid rgba(0,0,0,.08); padding:10px 12px; border-radius:12px; color:#4a1939}
+  .p2-ctrls{display:flex; gap:8px; align-items:center; justify-content:center; flex-wrap:wrap; margin:6px 0}
+
+  /* Visualizer */
+  #viz{width:100%; height:80px; background:rgba(255,255,255,.4); border-radius:12px; overflow:hidden; border:1px solid rgba(0,0,0,.08)}
+  #viz canvas{width:100%; height:100%}
+
+  /* P3 — escena cósmica */
+  .page.p3{background:#000}
+  #scene{position:absolute; inset:0; width:100%; height:100%}
+  .overlay{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; padding:20px; pointer-events:none;}
+  .overlay .text{font-size:clamp(20px,4.2vw,34px); line-height:1.25; color:#fff; text-shadow:0 2px 16px rgba(0,0,0,.6); opacity:0; transition:opacity .6s ease;}
+  .overlay .text.show{opacity:1}
+  .tools3{position:absolute; right:10px; bottom:10px; display:flex; gap:8px; z-index:2}
+  .tools3 .btn{background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.2)}
+  .easter{position:absolute; left:10px; bottom:10px; z-index:2; display:flex; gap:8px; align-items:center}
+  .easter input{font:inherit; padding:6px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.2); background:#0d0d12; color:#fff}
+
+  /* P4 — reloj de arena dorado */
+  .page.p4{background:#000; display:flex; align-items:center; justify-content:center}
+  #hourglass{position:relative; width:min(520px,90vw); height:min(660px,82vh); margin:auto}
+  #hgCanvas{position:absolute; inset:0; width:100%; height:100%}
+  .hgText{position:absolute; width:100%; text-align:center; left:0}
+  .hgTop{top:10px; color:#f8e7c6; text-shadow:0 2px 12px rgba(0,0,0,.6)}
+  .hgBottom{bottom:10px; color:#f8e7c6; text-shadow:0 2px 12px rgba(0,0,0,.6); opacity:0; transition:opacity .7s ease}
+  .shine{
+    position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(120deg, transparent 0%, rgba(255,255,255,.25) 30%, transparent 60%);
+    background-size:200% 100%; mix-blend-mode:soft-light; border-radius:20px; 
+    animation:shine 8s linear infinite;
+  }
+  @keyframes shine{ 0%{background-position:-120% 0} 100%{background-position:120% 0} }
+
+  /* QR modal */
+  #qrModal .modal__dialog{width:min(440px,92vw); text-align:center}
+  #qrImg{width:320px; height:320px; background:#fff; border-radius:12px}
+</style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Álbum de nosotros 💑</h1>
+      <div class="nav">
+        <button class="btn" id="prev">← Anterior</button>
+        <span id="pager" class="muted">1 / 4</span>
+        <button class="btn" id="next">Siguiente →</button>
+      </div>
+      <div id="player" class="player">
+        <button class="btn btn-ico" id="playPause" aria-label="Reproducir">▶️</button>
+        <button class="btn btn-ico" id="prevTrack" aria-label="Anterior">⏮️</button>
+        <button class="btn btn-ico" id="nextTrack" aria-label="Siguiente">⏭️</button>
+        <input id="vol" type="range" min="0" max="1" step="0.01" value="0.6" aria-label="Volumen" />
+        <span id="nowPlaying" class="muted" style="min-width:140px"></span>
+      </div>
+    </header>
+
+    <!-- P1 -->
+    <section class="page active p1" data-page="1">
+      <div class="page-inner">
+        <div class="grid">
+          <div class="panel">
+            <div class="muted" id="since"></div>
+            <div class="live">
+              <div style="width:100%">
+                <div class="big" id="line">—</div>
+                <div class="units" id="units"></div>
+              </div>
+            </div>
+            <div class="stats">
+              <div class="stat"><div class="k" id="totalDays">—</div><div class="muted">Días totales</div></div>
+              <div class="stat"><div class="k" id="totalHours">—</div><div class="muted">Horas totales</div></div>
+              <div class="stat"><div class="k" id="totalSeconds">—</div><div class="muted">Segundos totales <span class="heart">♥</span></div></div>
+            </div>
+          </div>
+          <div class="panel">
+            <h2 style="margin-bottom:8px">Cálculos curiosos</h2>
+            <div class="stats">
+              <div class="stat"><div class="k" id="heartBeats">—</div><div class="muted">Latidos (aprox.)</div></div>
+              <div class="stat"><div class="k" id="earthOrbits">—</div><div class="muted">Vueltas al Sol</div></div>
+              <div class="stat"><div class="k" id="galaxyOrbit">—</div><div class="muted">Vueltas galácticas*</div></div>
+              <div class="stat"><div class="k" id="laughSeconds">—</div><div class="muted">Segundos de risas**</div></div>
+              <div class="stat" style="grid-column:1/-1"><small class="muted">*A escala de 230 millones de años por vuelta 😊</small><br><small class="muted">**Estimado: 3 min de risa por día juntos</small></div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex; justify-content:center; margin:12px 0 16px">
+          <button id="secretHeart" class="btn" style="font-size:clamp(24px,4vw,36px); padding:10px 16px">❤️ Mantén presionado 2s</button>
+        </div>
+        <div class="footer"><div>Hecho con <span class="heart">♥</span> por ustedes dos.</div><div class="muted">Navega con ← / →</div></div>
+      </div>
+    </section>
+
+    <!-- Modal carta oculta -->
+    <div id="loveLetterModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
+      <div class="modal__backdrop" data-close></div>
+      <div class="modal__dialog" role="document">
+        <button class="modal__close btn" data-close aria-label="Cerrar">✕</button>
+        <h2 style="margin-bottom:8px">Para ti</h2>
+        <div class="modal__paper"><p id="loveLetterText"></p></div>
+      </div>
+    </div>
+
+    <!-- P2 -->
+    <section class="page p2" data-page="2">
+      <div class="page-inner">
+        <div class="p2-ctrls">
+          <button class="btn" id="toggleRain">🌧️ Lluvia de “Te amo”</button>
+        </div>
+        <div id="viz"><canvas id="vizCanvas"></canvas></div>
+        <h2 style="margin:10px 8px 0 8px; color:#5c1841">Te amo en muchos idiomas 💞</h2>
+        <div class="love-grid" id="loveGrid"></div>
+        <h3 style="margin:10px 8px 0 8px; color:#5c1841">Razones por las que te amo</h3>
+        <div class="reasons" id="reasons"></div>
+        <div class="footer"><div class="muted">Toca tarjetas para descubrir razones</div><div class="muted">Siguiente → sorpresa</div></div>
+      </div>
+    </section>
+
+    <!-- P3 -->
+    <section class="page p3" data-page="3">
+      <canvas id="scene"></canvas>
+      <div class="overlay"><div class="text" id="overlayText"></div></div>
+      <div class="tools3">
+        <button class="btn" id="btnShot">📸 Capturar</button>
+        <button class="btn" id="btnQR">🔗 QR</button>
+      </div>
+      <div class="easter">
+        <input id="secretWord" placeholder="palabra secreta" />
+        <button class="btn" id="setSecret">✨ Activar</button>
+      </div>
+    </section>
+
+    <!-- QR Modal -->
+    <div id="qrModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
+      <div class="modal__backdrop" data-close></div>
+      <div class="modal__dialog" role="document">
+        <button class="modal__close btn" data-close aria-label="Cerrar">✕</button>
+        <h2>Comparte este amor</h2>
+        <img id="qrImg" width="320" height="320" alt="Código QR" style="background:#fff; border-radius:12px"/>
+        <div style="margin-top:8px" class="muted" id="qrUrl"></div>
+        <div style="margin-top:8px"><button class="btn" id="copyUrl">📋 Copiar enlace</button></div>
+      </div>
+    </div>
+
+    <!-- P4 -->
+    <section class="page p4" data-page="4">
+      <div id="hourglass">
+        <canvas id="hgCanvas"></canvas>
+        <div class="shine"></div>
+        <div class="hgText hgTop">cuando este reloj acabe mi amor por ti también</div>
+        <div class="hgText hgBottom" id="hgMsg2">…nunca, porque este reloj nunca parará</div>
+      </div>
+    </section>
+  </div>
+
+<script>
+/* ========= Navegación (apaga/enciende animaciones) ========= */
+const pages = Array.from(document.querySelectorAll('.page'));
+let idx = 0;
+const pager = document.getElementById('pager');
+function show(i){
+  const prev = idx;
+  idx = (i + pages.length) % pages.length;
+
+  // Apagar animaciones de la página anterior
+  if (pages[prev]?.classList.contains('p3')) stopScene();
+  if (pages[prev]?.classList.contains('p4')) stopHourglass();
+
+  pages.forEach((p,k)=> p.classList.toggle('active', k===idx));
+  pager.textContent = (idx+1) + ' / ' + pages.length;
+
+  // Encender animaciones de la nueva página
+  if (pages[idx].classList.contains('p3')) startScene();
+  if (pages[idx].classList.contains('p4')) startHourglass();
+
+  // Música por página
+  const targetIdx = pageToTrackIndex[idx] ?? 0;
+  if (tracks[targetIdx] && tracks[targetIdx].src !== audio.src){
+    setTrack(targetIdx, {autoplay: !audio.paused, fade:true});
+  }
+}
+document.getElementById('prev').onclick = ()=> show(idx-1);
+document.getElementById('next').onclick = ()=> show(idx+1);
+document.addEventListener('keydown', e=>{
+  if (e.key==='ArrowRight') show(idx+1);
+  if (e.key==='ArrowLeft') show(idx-1);
+  if (e.key==='m' || e.key==='M'){ audio.muted = !audio.muted; }
+});
+
+/* ========= Utilidades ========= */
+const nf = new Intl.NumberFormat('es-CL',{maximumFractionDigits:0});
+function pad(n){return String(n).padStart(2,'0')}
+function plural(n,one,many){return n===1?one:many}
+function addYears(d,n){const t=new Date(d); t.setFullYear(t.getFullYear()+n); return t}
+function addMonths(d,n){const t=new Date(d); t.setMonth(t.getMonth()+n); return t}
+function diffYMDHMS(from,to){
+  if (to<from) return {years:0,months:0,days:0,hours:0,minutes:0,seconds:0};
+  let years = to.getFullYear()-from.getFullYear();
+  let anniv = addYears(from, years);
+  if (anniv>to){years--; anniv=addYears(from,years)}
+  let months = to.getMonth()-anniv.getMonth(); if (months<0) months+=12;
+  let mAnniv = addMonths(anniv, months); if (mAnniv>to){months--; mAnniv=addMonths(anniv, months)}
+  const ut = Date.UTC(to.getFullYear(),to.getMonth(),to.getDate());
+  const um = Date.UTC(mAnniv.getFullYear(),mAnniv.getMonth(),mAnniv.getDate());
+  let days = Math.floor((ut-um)/86400000);
+  const base = new Date(mAnniv.getFullYear(), mAnniv.getMonth(), mAnniv.getDate(), from.getHours(), from.getMinutes(), from.getSeconds(),0);
+  let ms = to - base - days*86400000;
+  if (ms<0){days--; ms+=86400000}
+  const hours=Math.floor(ms/3600000); ms-=hours*3600000;
+  const minutes=Math.floor(ms/60000); ms-=minutes*60000;
+  const seconds=Math.floor(ms/1000);
+  return {years,months,days,hours,minutes,seconds};
+}
+
+/* ========= Música ========= */
+const audio = new Audio(); audio.preload='auto'; audio.loop = true;
+const playBtn = document.getElementById('playPause');
+const prevBtn = document.getElementById('prevTrack');
+const nextBtn = document.getElementById('nextTrack');
+const volEl  = document.getElementById('vol');
+const nowPlaying = document.getElementById('nowPlaying');
+
+const tracks = [
+  { id:'p1', src:'audio/musica1.mp3',  title:'Destello...' },
+  { id:'p2', src:'audio/musica2.mp3',  title:'I Wanna Be Yours' },
+  { id:'p3', src:'audio/ambiente.mp3', title:'Sparks' },
+  { id:'p4', src:'audio/pista_p4.mp3', title:'Apocalypse' },
+];
+const pageToTrackIndex = { 0:0, 1:1, 2:2, 3:3 };
+
+let currentIdx = 0; let isFading = false;
+const savedVol = localStorage.getItem('love.vol'); if (savedVol) volEl.value = savedVol;
+audio.volume = Number(volEl.value);
+function uiUpdatePlaying(playing){ playBtn.textContent = playing ? '⏸️' : '▶️'; }
+function setTrack(i, {autoplay=true, fade=true}={}){
+  i = (i + tracks.length) % tracks.length; currentIdx = i;
+  const t = tracks[currentIdx]; nowPlaying.textContent = t.title;
+  if (fade){ crossfadeTo(t.src, autoplay); }
+  else{ audio.src = t.src; if (autoplay) audio.play().then(()=>uiUpdatePlaying(true)).catch(()=>uiUpdatePlaying(false)); }
+}
+function crossfadeTo(src, autoplay=true){
+  if (isFading){ return; }
+  isFading = true;
+  const step = 0.04;
+  const fadeOut = setInterval(()=>{
+    audio.volume = Math.max(0, audio.volume - step);
+    if (audio.volume <= 0.01){
+      clearInterval(fadeOut);
+      audio.pause(); audio.src = src; audio.load();
+      if (autoplay){
+        audio.play().then(()=>{
+          const fadeIn = setInterval(()=>{
+            audio.volume = Math.min(Number(volEl.value), audio.volume + step);
+            if (audio.volume >= Number(volEl.value)-0.01){ clearInterval(fadeIn); isFading=false; }
+          },60);
+          uiUpdatePlaying(true);
+        }).catch(()=>{ uiUpdatePlaying(false); isFading=false; });
+      }else{ isFading=false; }
+    }
+  },60);
+}
+playBtn.addEventListener('click', async ()=>{
+  if (audio.src === ''){ setTrack(currentIdx,{autoplay:true,fade:false}); return; }
+  if (audio.paused){ try{ await audio.play(); uiUpdatePlaying(true);}catch(e){uiUpdatePlaying(false);} }
+  else{ audio.pause(); uiUpdatePlaying(false); }
+});
+prevBtn.addEventListener('click', ()=> setTrack(currentIdx-1));
+nextBtn.addEventListener('click', ()=> setTrack(currentIdx+1));
+volEl.addEventListener('input', ()=>{ audio.volume = Number(volEl.value); localStorage.setItem('love.vol', volEl.value); });
+
+/* ========= P1: contador + carta oculta ========= */
+const sinceEl = document.getElementById('since');
+const lineEl = document.getElementById('line'); const unitsEl = document.getElementById('units');
+const totalDaysEl = document.getElementById('totalDays'); const totalHoursEl = document.getElementById('totalHours'); const totalSecondsEl = document.getElementById('totalSeconds');
+const heartBeatsEl = document.getElementById('heartBeats'); const earthOrbitsEl = document.getElementById('earthOrbits'); const galaxyOrbitEl = document.getElementById('galaxyOrbit'); const laughSecondsEl = document.getElementById('laughSeconds');
+
+// 10/12/2022 00:00
+const start = new Date(2022, 11, 10, 0, 0, 0);
+sinceEl.textContent = `Contando desde: ${start.toLocaleString('es-CL')}`;
+function renderCounter(){
+  const now = new Date(); const d = diffYMDHMS(start, now);
+  lineEl.textContent = `${d.years} ${plural(d.years,'año','años')}, ${d.months} ${plural(d.months,'mes','meses')}, ${d.days} ${plural(d.days,'día','días')}`;
+  unitsEl.innerHTML = '';
+  for (const t of [`${pad(d.hours)} h`, `${pad(d.minutes)} min`, `${pad(d.seconds)} s`]){
+    const span = document.createElement('span'); span.className='chip'; span.textContent=t; unitsEl.appendChild(span);
+  }
+  const ms = now - start; const totalSeconds = Math.floor(ms/1000); const totalHours = Math.floor(ms/3600000);
+  const totalDays = Math.floor((Date.UTC(now.getFullYear(),now.getMonth(),now.getDate()) - Date.UTC(start.getFullYear(),start.getMonth(),start.getDate()))/86400000);
+  totalSecondsEl.textContent = nf.format(totalSeconds);
+  totalHoursEl.textContent = nf.format(totalHours);
+  totalDaysEl.textContent = nf.format(totalDays);
+  const avgBpm = 75/60;
+  heartBeatsEl.textContent = nf.format(Math.floor(totalSeconds * avgBpm));
+  earthOrbitsEl.textContent = ( (ms / (365.25*24*3600*1000)).toFixed(6) );
+  galaxyOrbitEl.textContent = ( (ms / (230e6*365.25*24*3600*1000)).toExponential(3) );
+  laughSecondsEl.textContent = nf.format(Math.floor((totalDays) * 3 * 60));
+}
+renderCounter(); setInterval(renderCounter, 1000);
+
+const loveLetter = `
+Amor mío,
+
+Desde que llegaste a mi vida, el universo dejó de ser un lugar inmenso y vacío para convertirse en un mapa lleno de estrellas que me guían siempre hacia ti. Eres mi constelación favorita, mi planeta habitable, la órbita en la que quiero quedarme para siempre. Si el cosmos parece infinito, mi amor por ti lo supera; porque por más lejos que miremos, no hay límite para lo que siento.
+
+Tú eres mi Big Bang personal: el inicio de todo lo bueno, el origen de cada alegría, la energía que da vida a mis días. Y aunque allá afuera existan millones de galaxias, ninguna brilla tanto como la luz que encuentro en tu sonrisa.
+
+Si pudiera escribir nuestro amor en lenguaje de programación, sería un while(true){ teAmo++; } —un bucle infinito, sin condiciones de salida. Cada latido es una línea de código que se ejecuta sin error, cada mirada es un commit importante en este repositorio que llamamos vida. Tú eres mi mejor algoritmo, optimizado sin que yo lo buscara, y la función que siempre devuelve felicidad.
+
+Eres mi variable constante, la que no cambia aunque todo alrededor se altere. Eres mi sistema operativo estable, mi backup seguro en los días inciertos, mi interfaz más amigable. Y si algún día el mundo hiciera “crash”, yo reiniciaría mil veces solo para volver a encontrarte.
+
+En tus ojos veo nebulosas, en tu risa escucho la música de las estrellas, en tu abrazo siento la gravedad que me mantiene en pie. Y aunque el universo siga expandiéndose, mi amor por ti siempre irá más rápido que la luz. Porque mientras la ciencia dice que nada supera esa velocidad, yo sé que lo que siento rompe todas las leyes conocidas.
+
+Quiero ser tu astronauta eterno, viajando contigo por todos los sistemas estelares que aún nos faltan descubrir. Y también quiero ser tu programador fiel, depurando los errores, compilando sueños y ejecutando proyectos donde tú siempre seas la protagonista.
+
+Lo único que sé con certeza es que no hay final: ni en el espacio, ni en el tiempo, ni en la memoria de este corazón que late por ti. Cada día a tu lado es como lanzar una nueva versión mejorada de mí mismo, y cada noche es un release estable lleno de paz.
+
+Tú eres mi universo entero, mi ecuación perfecta, mi código más bello y mi galaxia infinita.
+
+Hoy, mañana y siempre: mi amor por ti no tiene fin, porque este loop nunca se romperá.
+`;
+const secretHeart = document.getElementById('secretHeart');
+const letterModal = document.getElementById('loveLetterModal');
+const letterTextEl = document.getElementById('loveLetterText');
+let pressTimer=null;
+function openLetter(){
+  letterTextEl.textContent = loveLetter.trim();
+  letterModal.classList.add('show');
+  letterModal.setAttribute('aria-hidden','false');
+  try{ audio.volume = Math.max(0, audio.volume - 0.3);}catch{}
+}
+function closeLetter(){
+  letterModal.classList.remove('show');
+  letterModal.setAttribute('aria-hidden','true');
+  try{ audio.volume = Number(volEl.value);}catch{}
+}
+letterModal.querySelectorAll('[data-close]').forEach(el=> el.addEventListener('click', closeLetter));
+document.addEventListener('keydown', e=>{ if (e.key==='Escape' && letterModal.classList.contains('show')) closeLetter(); });
+function startPress(){ if (pressTimer) return; pressTimer = setTimeout(()=>{ openLetter(); pressTimer=null; }, 2000); }
+function cancelPress(){ if (pressTimer){ clearTimeout(pressTimer); pressTimer=null; } }
+['mousedown','touchstart'].forEach(ev=> secretHeart.addEventListener(ev, startPress));
+['mouseup','mouseleave','touchend','touchcancel'].forEach(ev=> secretHeart.addEventListener(ev, cancelPress));
+
+/* ========= P2 ========= */
+const loveWords = [
+  ["Te amo","Español"],["I love you","English"],["Je t’aime","Français"],["Ti amo","Italiano"],
+  ["Ich liebe dich","Deutsch"],["Eu te amo","Português"],["愛してる","日本語"],["사랑해","한국어"],
+  ["我爱你","中文"],["Я тебя люблю","Русский"],["أحبك","العربية"],["Te iubesc","Română"],
+  ["Seni seviyorum","Türkçe"],["Ik hou van jou","Nederlands"],["Σ’ αγαπώ","Ελληνικά"],
+  ["Aku cinta kamu","Indonesia"],["Aš tave myliu","Lietuvių"],["Kocham Cię","Polski"],
+  ["Ég elska þig","Íslenska"],["Te sakam","Македонски"],["मैं तुमसे प्यार करता हूँ","हिन्दी"],
+  ["Mwen renmen ou","Kreyòl"],["Ngiyakuthanda","Zulu"],["Ndagukunda","Kinyarwanda"],
+  ["Aloha wau iā ‘oe","ʻŌlelo Hawaiʻi"],["Te dua","Shqip"],["Volim te","Hrvatski"],["Milujĕ tě","Čeština"]
+];
+const loveGrid = document.getElementById('loveGrid');
+loveWords.forEach(w=>{
+  const d = document.createElement('div'); d.className='love';
+  d.innerHTML = `${w[0]} <small>${w[1]}</small>`;
+  d.addEventListener('click', ()=> addReason(`${w[0]} — por ${randomReasonFragment()}`));
+  loveGrid.appendChild(d);
+});
+const defaultReasons = [
+  "cómo iluminas mis días con una sonrisa",
+  "lo valiente que eres incluso cuando dudas",
+  "tus abrazos que curan todo",
+  "tu risa que hace música en mi mundo",
+  "tu forma de mirar, tan honesta",
+  "tu paciencia en los días difíciles",
+  "tu locura linda que me contagia",
+  "que sueñas grande y me invitas a soñar",
+  "tu ternura en los detalles",
+  "la paz que encuentro en tu voz"
+];
+function randomReasonFragment(){ return defaultReasons[Math.floor(Math.random()*defaultReasons.length)]; }
+const reasonsEl = document.getElementById('reasons');
+function addReason(t){
+  const r = document.createElement('div'); r.className='reason'; r.textContent = t;
+  reasonsEl.prepend(r);
+}
+defaultReasons.forEach(r=> addReason(`Te amo por ${r}`));
+
+let rainRunning=false, rainTimer=null;
+const toggleRainBtn = document.getElementById('toggleRain');
+toggleRainBtn.onclick = ()=>{
+  rainRunning = !rainRunning;
+  toggleRainBtn.textContent = rainRunning ? "⛅ Detener lluvia" : "🌧️ Lluvia de “Te amo”";
+  if (rainRunning){ startRain(); } else { stopRain(); }
+}
+function startRain(){
+  rainTimer = setInterval(()=>{
+    const el = document.createElement('div');
+    el.textContent = "Te amo";
+    el.style.cssText = `
+      position:fixed; left:${Math.random()*100}vw; top:-40px; z-index:5;
+      color:#7b3a58; opacity:${0.7+Math.random()*0.3}; 
+      transform:rotate(${(Math.random()*14-7)}deg);
+      font-size:${18+Math.random()*28}px; pointer-events:none;
+      text-shadow:0 2px 4px rgba(0,0,0,.15);
+    `;
+    document.body.appendChild(el);
+    const duration = 6000 + Math.random()*4000;
+    const start = performance.now();
+    function drop(t){
+      const k = (t-start)/duration;
+      if (k>=1){ el.remove(); return; }
+      el.style.top = (k*100)+'vh';
+      el.style.transform = `translateY(${k*20}px) rotate(${(Math.random()*14-7)}deg)`;
+      requestAnimationFrame(drop);
+    }
+    requestAnimationFrame(drop);
+  }, 250);
+}
+function stopRain(){ clearInterval(rainTimer); rainTimer=null; document.querySelectorAll('body > div').forEach(d=>{ if (d.textContent==="Te amo") d.remove(); }); }
+
+// Visualizer
+let audioCtx, analyser, vizData, vizCanvas = document.getElementById('vizCanvas'), vctx = vizCanvas.getContext('2d');
+function resizeViz(){ vizCanvas.width = vizCanvas.clientWidth; vizCanvas.height = vizCanvas.clientHeight; }
+addEventListener('resize', resizeViz); resizeViz();
+function ensureAnalyser(){
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  const src = audioCtx.createMediaElementSource(audio);
+  analyser = audioCtx.createAnalyser(); analyser.fftSize = 256;
+  src.connect(analyser); analyser.connect(audioCtx.destination);
+  vizData = new Uint8Array(analyser.frequencyBinCount);
+  requestAnimationFrame(vizLoop);
+}
+function vizLoop(){
+  if (analyser){
+    analyser.getByteFrequencyData(vizData);
+    vctx.clearRect(0,0,vizCanvas.width,vizCanvas.height);
+    const barW = vizCanvas.width / vizData.length;
+    for (let i=0;i<vizData.length;i++){
+      const h = (vizData[i]/255) * vizCanvas.height;
+      vctx.fillStyle = 'rgba(92,24,65,0.8)';
+      vctx.fillRect(i*barW, vizCanvas.height - h, barW*0.9, h);
+    }
+  }
+  requestAnimationFrame(vizLoop);
+}
+playBtn.addEventListener('click', ()=>{ if (!audioCtx && !audio.paused) ensureAnalyser(); });
+
+/* ========= P3: escena cósmica (start/stop + resize + stages limpios) ========= */
+const scene = document.getElementById('scene'); 
+const sctx = scene.getContext('2d');
+const overlayText = document.getElementById('overlayText');
+
+let sParticles=[], sAnimId=null, sStart=0, sPhase=0, sZoomT=0, sRunning=false;
+let secret='amor';
+
+function resizeScene(){
+  scene.width  = scene.clientWidth  || scene.getBoundingClientRect().width  || window.innerWidth;
+  scene.height = scene.clientHeight || scene.getBoundingClientRect().height || Math.round(window.innerHeight*0.6);
+}
+addEventListener('resize', ()=>{ if (sRunning) resizeScene(); });
+
+function startScene(){
+  sRunning = true;
+  resizeScene();
+  cancelAnimationFrame(sAnimId);
+  sParticles=[]; sPhase=0; sZoomT=0; overlayText.textContent=''; overlayText.classList.remove('show'); 
+  sStart = performance.now();
+  for (let i=0;i<260;i++) sParticles.push({t:'star', x:Math.random()*scene.width, y:Math.random()*scene.height, r:Math.random()*1.8+0.4, a:Math.random()*0.6+0.4});
+  sLoop();
+}
+function stopScene(){ sRunning=false; cancelAnimationFrame(sAnimId); }
+
+function addShooting(){ 
+  const y = Math.random()*scene.height*0.6, ang=Math.random()*0.3+0.2, sp=8+Math.random()*6; 
+  sParticles.push({t:'shoot', x:-50, y, vx:Math.cos(ang)*sp, vy:Math.sin(ang)*sp, life:0, max:120}); 
+}
+function drawSky(now){
+  const g=sctx.createRadialGradient(scene.width*0.6, scene.height*0.2, 0, scene.width*0.6, scene.height*0.2, Math.max(scene.width,scene.height));
+  g.addColorStop(0,'#02030a'); g.addColorStop(1,'#000'); sctx.fillStyle=g; sctx.fillRect(0,0,scene.width,scene.height);
+  for (const p of sParticles){
+    if (p.t==='star'){ 
+      sctx.globalAlpha = p.a*(0.85 + Math.sin((now+p.x*3)/800)*0.15); 
+      sctx.beginPath(); sctx.arc(p.x,p.y,p.r,0,Math.PI*2); 
+      sctx.fillStyle='#ffffff'; sctx.fill(); sctx.globalAlpha=1; 
+    } else { 
+      p.x+=p.vx; p.y+=p.vy; p.life++; 
+      sctx.globalAlpha=1-p.life/p.max; sctx.strokeStyle='#cde2ff'; sctx.lineWidth=2; 
+      sctx.beginPath(); sctx.moveTo(p.x-p.vx*4,p.y-p.vy*4); sctx.lineTo(p.x,p.y); sctx.stroke(); sctx.globalAlpha=1; 
+    }
+  }
+  sParticles = sParticles.filter(p=> p.t!=='shoot' || p.life<p.max);
+}
+function drawCentered(s){ overlayText.textContent=s; overlayText.classList.add('show'); }
+function hideCentered(){ overlayText.classList.remove('show'); setTimeout(()=> overlayText.textContent='', 600); }
+
+function drawEarth(cx,cy,R){
+  const g=sctx.createRadialGradient(cx-R*0.4, cy-R*0.4, R*0.2, cx,cy,R); g.addColorStop(0,'#9ad0ff'); g.addColorStop(1,'#004b8f');
+  sctx.fillStyle=g; sctx.beginPath(); sctx.arc(cx,cy,R,0,Math.PI*2); sctx.fill();
+  sctx.fillStyle='#2a8e4b'; sctx.beginPath(); sctx.ellipse(cx-R*0.2, cy, R*0.45, R*0.28, 0, 0, Math.PI*2); sctx.fill();
+  sctx.beginPath(); sctx.ellipse(cx+R*0.25, cy-R*0.1, R*0.3, R*0.2, 0, 0, Math.PI*2); sctx.fill();
+  sctx.strokeStyle='rgba(255,255,255,.6)'; sctx.lineWidth=2; sctx.beginPath(); sctx.arc(cx,cy,R,0,Math.PI*2); sctx.stroke();
+}
+
+function sLoop(now=performance.now()){
+  if (!sRunning) return;
+  sAnimId=requestAnimationFrame(sLoop);
+  drawSky(now);
+  const elapsed=(now - sStart)/1000;
+
+  if (elapsed<5 && Math.random()<0.06) addShooting();
+  if (elapsed>=5 && sPhase===0){ drawCentered('pide un deseo..'); sPhase=1; }
+  if (elapsed>=10 && sPhase===1){ drawCentered('yo ya pedí el mío y eres tú, lo mejor que me pudo pasar'); sPhase=2; }
+  if (elapsed>=20 && sPhase===2){ hideCentered(); sPhase=3; sZoomT=0; }
+
+  if (sPhase>=3){
+    sZoomT += 1/60;
+    const stageDur = 3;
+    const stage = Math.min(5, Math.floor(sZoomT / stageDur));     // 0..5
+    const local = (sZoomT % stageDur) / stageDur;    // 0..1 dentro de la etapa
+
+    const cx = scene.width/2, cy = scene.height/2;
+    const baseR = Math.min(scene.width, scene.height) * 0.16;
+
+    sctx.textAlign='center';
+    sctx.fillStyle='#fff';
+    sctx.font='20px Great Vibes, cursive';
+
+    switch (stage) {
+      case 0: { // Tierra
+        const R = Math.max(40, baseR * (1 - local*0.4));
+        drawEarth(cx, cy, R);
+        sctx.fillText('Tierra', cx, cy - R*1.4);
+        break;
+      }
+      case 1: { // Sistema Solar
+        const R = Math.max(40, baseR * (0.8 - local*0.2));
+        drawEarth(cx, cy, R);
+        sctx.strokeStyle='rgba(255,255,255,.20)'; sctx.lineWidth=1.5;
+        for (let i=1;i<=4;i++){ sctx.beginPath(); sctx.arc(cx,cy,R*(1+i*0.6),0,Math.PI*2); sctx.stroke(); }
+        sctx.fillText('Sistema Solar', cx, cy - R*1.4);
+        break;
+      }
+      case 2: { // Vía Láctea
+        const R = baseR * 0.6;
+        sctx.save(); sctx.translate(cx,cy); sctx.rotate(-0.2);
+        const g=sctx.createRadialGradient(0,0,10,0,0,R*4);
+        g.addColorStop(0,'rgba(255,255,255,.85)'); g.addColorStop(1,'rgba(255,255,255,0)');
+        sctx.fillStyle=g; sctx.beginPath(); sctx.ellipse(0,0,R*4,R*1.2,0,0,Math.PI*2); sctx.fill();
+        sctx.restore();
+        sctx.fillText('Vía Láctea', cx, cy - R*1.8);
+        break;
+      }
+      case 3: { // Grupo Local
+        const R = baseR * 0.55;
+        for (let i=0;i<20;i++){
+          sctx.beginPath();
+          sctx.arc(cx+(Math.random()-0.5)*R*8, cy+(Math.random()-0.5)*R*6, 1.8, 0, Math.PI*2);
+          sctx.fillStyle='#d7e9ff'; sctx.fill();
+        }
+        sctx.fillText('Grupo Local', cx, cy - R*1.4);
+        break;
+      }
+      case 4: { // Supercúmulo de Virgo
+        const R = baseR * 0.5;
+        for (let i=0;i<4;i++){
+          sctx.beginPath();
+          sctx.ellipse(cx+(i-1.5)*R*3.5, cy+(Math.sin(performance.now()/900+i)*R*0.8),
+                       R*2.6, R*0.8, 0, 0, Math.PI*2);
+          sctx.fillStyle='rgba(255,255,255,.07)'; sctx.fill();
+        }
+        sctx.fillText('Supercúmulo de Virgo', cx, cy - R*1.6);
+        break;
+      }
+      case 5: { // Universo observable + corazón final
+        const R = baseR * 0.45;
+        sctx.strokeStyle='rgba(255,255,255,.18)'; sctx.lineWidth=1.2;
+        for (let i=1;i<=6;i++){ sctx.beginPath(); sctx.arc(cx,cy,R*(0.6+i*0.35),0,Math.PI*2); sctx.stroke(); }
+        const s=Math.min(scene.width,scene.height)*0.35;
+        sctx.save(); sctx.translate(cx,cy); sctx.scale(s/100, s/100); sctx.fillStyle='#ff6b9e';
+        sctx.beginPath();
+        sctx.moveTo(0,30);
+        sctx.bezierCurveTo(0,-10,50,-10,50,20);
+        sctx.bezierCurveTo(50,45,25,60,0,80);
+        sctx.bezierCurveTo(-25,60,-50,45,-50,20);
+        sctx.bezierCurveTo(-50,-10,0,-10,0,30); sctx.fill();
+        sctx.restore();
+
+        sctx.fillText('Universo observable', cx, cy - R*1.6);
+        sctx.font='22px Great Vibes, cursive';
+        sctx.fillText('mi amor por ti es más grande que todo esto', cx, cy + s*0.55);
+        break;
+      }
+    }
+  }
+}
+
+// Screenshot
+document.getElementById('btnShot').onclick = ()=>{
+  const a=document.createElement('a'); a.download='bajo-las-estrellas.png'; a.href=scene.toDataURL('image/png'); a.click();
+};
+// Easter egg (palabra completa)
+let typed = '';
+function triggerStar(){
+  sctx.save(); sctx.fillStyle='#ffd166'; sctx.shadowColor='#ffd166'; sctx.shadowBlur=18;
+  sctx.beginPath(); sctx.arc(40,40,5,0,Math.PI*2); sctx.fill();
+  sctx.shadowBlur=0; sctx.fillStyle='#fff'; sctx.font='18px Great Vibes, cursive'; sctx.fillText('Tu estrella', 80, 46); sctx.restore();
+}
+document.getElementById('setSecret').onclick=()=>{
+  const v = document.getElementById('secretWord').value.trim(); if (v) secret=v.toLowerCase();
+  alert('Palabra secreta lista ✨');
+};
+document.addEventListener('keydown', e=>{
+  if (!pages[idx].classList.contains('p3')) return;
+  const k = e.key.toLowerCase();
+  if (k.length === 1 && /[a-záéíóúñ]/.test(k)) {
+    typed = (typed + k).slice(-secret.length);
+    if (typed === secret.toLowerCase()) { triggerStar(); typed = ''; }
+  } else if (k === 'escape') typed = '';
+});
+
+/* ========= QR (imagen de servicio) ========= */
+const qrModal = document.getElementById('qrModal');
+const qrUrlEl = document.getElementById('qrUrl');
+const qrImg = document.getElementById('qrImg');
+document.getElementById('btnQR').onclick = ()=>{
+  const url = location.href;
+  qrUrlEl.textContent = url;
+  const api = "https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=" + encodeURIComponent(url);
+  qrImg.src = api;
+  openModal(qrModal);
+};
+document.getElementById('copyUrl').onclick = async ()=>{
+  try{ await navigator.clipboard.writeText(location.href); alert('Enlace copiado 📋'); }catch{ alert(location.href); }
+};
+
+/* ========= P4: reloj de arena (start/stop + resize) ========= */
+const hgCanvas = document.getElementById('hgCanvas'); 
+const hctx = hgCanvas.getContext('2d'); 
+const hgMsg2 = document.getElementById('hgMsg2');
+
+let hgStart=0, hgPhase='fall', hgAnimId=null, hgRunning=false;
+function resizeHG(){ 
+  hgCanvas.width=hgCanvas.clientWidth; 
+  hgCanvas.height=hgCanvas.clientHeight; 
+}
+addEventListener('resize', ()=>{ if (hgRunning) resizeHG(); });
+
+function startHourglass(){
+  hgRunning = true;
+  resizeHG();
+  hgStart = performance.now(); 
+  hgPhase='fall'; 
+  cancelAnimationFrame(hgAnimId);
+  hgMsg2.style.opacity = 0;
+  setTimeout(()=>{ if (hgRunning) hgMsg2.style.opacity=1; }, 60000);
+  hgLoop();
+}
+function stopHourglass(){
+  hgRunning = false;
+  cancelAnimationFrame(hgAnimId);
+  // 👇 limpiar para que no quede “pegado” al salir de la P4
+  hctx.clearRect(0, 0, hgCanvas.width, hgCanvas.height);
+}
+
+function easeInQuad(t){return t*t}
+function easeOutCubic(t){return 1-Math.pow(1-t,3)}
+function easeInOutCubic(t){return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2}
+
+function hgLoop(now=performance.now()){
+  if (!hgRunning) return;
+  hgAnimId=requestAnimationFrame(hgLoop);
+
+  const W=hgCanvas.width, H=hgCanvas.height, cx=W/2, cy=H/2, R=Math.min(W*0.35,H*0.38);
+  // Fondo
+  hctx.clearRect(0,0,W,H);
+  const bgGrad=hctx.createLinearGradient(0,0,0,H); bgGrad.addColorStop(0,'#0a0a0d'); bgGrad.addColorStop(1,'#000'); hctx.fillStyle=bgGrad; hctx.fillRect(0,0,W,H);
+  // Marco dorado
+  hctx.save(); hctx.translate(cx,cy);
+  hctx.strokeStyle='#000'; hctx.lineWidth=10; hctx.beginPath(); hctx.roundRect(-R*0.8,-R*1.1,R*1.6,R*2.2,20); hctx.stroke();
+  const goldGrad=hctx.createLinearGradient(-R, -R, R, R); goldGrad.addColorStop(0,'#a07d2d'); goldGrad.addColorStop(0.5,'#f3d88f'); goldGrad.addColorStop(1,'#8e6f29');
+  hctx.lineWidth=8; hctx.strokeStyle=goldGrad; hctx.stroke();
+  // Vidrio
+  function bulbPath(){
+    hctx.beginPath();
+    hctx.moveTo(0,-R*0.9);
+    hctx.bezierCurveTo(R*0.7,-R*0.9, R*0.5,-R*0.15, 0,-R*0.05);
+    hctx.bezierCurveTo(-R*0.5,-R*0.15, -R*0.7,-R*0.9, 0,-R*0.9);
+    hctx.moveTo(0,R*0.9);
+    hctx.bezierCurveTo(R*0.7,R*0.9, R*0.5,R*0.15, 0,R*0.05);
+    hctx.bezierCurveTo(-R*0.5,R*0.15, -R*0.7,R*0.9, 0,R*0.9);
+  }
+  hctx.strokeStyle='rgba(255,255,255,.45)'; hctx.lineWidth=3; bulbPath(); hctx.stroke();
+
+  // Tiempo y niveles
+  const fallDur=30000, revDur=2000;
+  let phaseT = now - hgStart;
+  if (hgPhase==='fall'){
+    if (phaseT >= fallDur){ hgPhase='reverse'; hgStart=now; phaseT=0; }
+  } else {
+    if (phaseT >= revDur){ hgPhase='fall'; hgStart=now; phaseT=0; }
+  }
+  const fracFall = Math.min(1, phaseT / fallDur);
+  const fracRev  = Math.min(1, phaseT / revDur);
+  let levelTop, levelBottom, throatFlow;
+  if (hgPhase==='fall'){
+    const k = easeInQuad(fracFall);
+    levelTop = 1 - k*0.98;
+    levelBottom = k*0.98;
+    throatFlow = (Math.sin(fracFall*Math.PI)*0.8+0.2);
+    if (fracFall>0.93){ const s = easeOutCubic( (fracFall-0.93)/0.07 ); levelTop = 1 - 0.98 + (0.98*(1-s)); levelBottom = 0.98 - (0.98*(1-s)); }
+  }else{
+    const k = easeInOutCubic(fracRev);
+    levelTop = 0.02 + k*0.96;
+    levelBottom = 0.98 - k*0.96;
+    throatFlow = 0.4*(1-k);
+  }
+
+  // Arena
+  function drawSand(top, level){
+    const clipPath = new Path2D();
+    if (top){
+      clipPath.moveTo(0,-R*0.9);
+      clipPath.bezierCurveTo(R*0.7,-R*0.9, R*0.5,-R*0.15, 0,-R*0.05);
+      clipPath.bezierCurveTo(-R*0.5,-R*0.15, -R*0.7,-R*0.9, 0,-R*0.9);
+      hctx.save(); hctx.clip(clipPath);
+      const h = R*0.75*level;
+      const grad=hctx.createLinearGradient(0,-R*0.9,0,-R*0.9+h);
+      grad.addColorStop(0,'#f5e1a4'); grad.addColorStop(1,'#d9b96c');
+      hctx.fillStyle=grad; hctx.fillRect(-R*0.8, -R*0.9, R*1.6, h);
+      hctx.restore();
+    }else{
+      clipPath.moveTo(0,R*0.9);
+      clipPath.bezierCurveTo(R*0.7,R*0.9, R*0.5,R*0.15, 0,R*0.05);
+      clipPath.bezierCurveTo(-R*0.5,R*0.15, -R*0.7,R*0.9, 0,R*0.9);
+      hctx.save(); hctx.clip(clipPath);
+      const h = R*0.75*level;
+      const grad=hctx.createLinearGradient(0,R*0.9,0,R*0.9-h);
+      grad.addColorStop(0,'#f5e1a4'); grad.addColorStop(1,'#d9b96c');
+      hctx.fillStyle=grad; hctx.fillRect(-R*0.8, R*0.9-h, R*1.6, h);
+      hctx.fillStyle='rgba(0,0,0,.08)';
+      hctx.beginPath(); hctx.ellipse(0, R*0.9 - h*0.1, R*0.3, R*0.08, 0, 0, Math.PI*2); hctx.fill();
+      hctx.restore();
+    }
+  }
+  drawSand(true, levelTop); 
+  drawSand(false, levelBottom);
+
+  // Chorro y brillos
+  hctx.globalAlpha = throatFlow; hctx.strokeStyle='#f3d88f'; hctx.lineWidth=2;
+  hctx.beginPath(); hctx.moveTo(0,-R*0.02); hctx.lineTo(0,R*0.02); hctx.stroke(); hctx.globalAlpha = 1;
+  hctx.strokeStyle='rgba(255,255,255,.25)'; hctx.lineWidth=2;
+  hctx.beginPath(); hctx.moveTo(-R*0.5,-R*0.75); hctx.lineTo(-R*0.3,-R*0.45); hctx.stroke();
+  hctx.beginPath(); hctx.moveTo(R*0.5,R*0.75); hctx.lineTo(R*0.3,R*0.45); hctx.stroke();
+
+  hctx.restore();
+}
+
+/* ========= Modales ========= */
+function openModal(modalEl, opts={}){
+  modalEl.classList.add('show'); modalEl.setAttribute('aria-hidden','false');
+  if (opts.duck){ try{ audio.volume = Math.max(0, audio.volume - 0.3);}catch{} }
+}
+function closeModal(modalEl){
+  modalEl.classList.remove('show'); modalEl.setAttribute('aria-hidden','true');
+  try{ audio.volume = Number(volEl.value);}catch{}
+}
+document.querySelectorAll('.modal').forEach(m=>{
+  m.addEventListener('click', e=>{ if (e.target.hasAttribute('data-close')) closeModal(m); });
+  m.querySelectorAll('[data-close]').forEach(b=> b.addEventListener('click', ()=> closeModal(m)));
+});
+document.addEventListener('keydown', e=>{
+  if (e.key==='Escape'){ document.querySelectorAll('.modal.show').forEach(m=> closeModal(m)); }
+});
+
+/* ========= Iniciar app ========= */
+show(0);
+setTrack(0,{autoplay:false,fade:false});
+nowPlaying.textContent = tracks[0].title;
+</script>
+</body>
+</html>
