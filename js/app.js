@@ -1,17 +1,75 @@
 'use strict';
+
+const prefersReducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function initStarfield() {
+  const root = document.getElementById('starfield');
+  if (!root) return;
+  const starCount = innerWidth < 600 ? 90 : 160;
+  for (let i = 0; i < starCount; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const size = Math.random() * 2 + 0.6;
+    s.style.width = size + 'px';
+    s.style.height = size + 'px';
+    s.style.left = Math.random() * 100 + 'vw';
+    s.style.top = Math.random() * 100 + 'vh';
+    s.style.setProperty('--tw-min', String(0.1 + Math.random() * 0.25));
+    s.style.setProperty('--tw-max', String(0.55 + Math.random() * 0.45));
+    s.style.animationDuration = (2 + Math.random() * 4) + 's';
+    s.style.animationDelay = (Math.random() * 4) + 's';
+    root.appendChild(s);
+  }
+  if (prefersReducedMotion) return;
+  function spawnShootingStar() {
+    const star = document.createElement('div');
+    star.className = 'shooting-star';
+    const startX = Math.random() * innerWidth * 0.7;
+    const startY = Math.random() * innerHeight * 0.4 - 40;
+    const angle = 18 + Math.random() * 14;
+    const dist = Math.max(innerWidth, innerHeight) * 0.9;
+    const rad = (angle * Math.PI) / 180;
+    const dx = Math.cos(rad) * dist;
+    const dy = Math.sin(rad) * dist;
+    star.style.left = startX + 'px';
+    star.style.top = startY + 'px';
+    star.style.transform = `rotate(${angle}deg)`;
+    root.appendChild(star);
+    const duration = 900 + Math.random() * 700;
+    const anim = star.animate([
+      { transform: `translate3d(0, 0, 0) rotate(${angle}deg)`, opacity: 0 },
+      { transform: `translate3d(${dx * 0.06}px, ${dy * 0.06}px, 0) rotate(${angle}deg)`, opacity: 1, offset: 0.12 },
+      { transform: `translate3d(${dx * 0.85}px, ${dy * 0.85}px, 0) rotate(${angle}deg)`, opacity: 1, offset: 0.75 },
+      { transform: `translate3d(${dx}px, ${dy}px, 0) rotate(${angle}deg)`, opacity: 0 }
+    ], { duration, easing: 'linear', fill: 'forwards' });
+    anim.onfinish = () => star.remove();
+  }
+  function scheduleShootingStar() {
+    spawnShootingStar();
+    setTimeout(scheduleShootingStar, 1800 + Math.random() * 3200);
+  }
+  scheduleShootingStar();
+}
+
+initStarfield();
+
 const pages = Array.from(document.querySelectorAll('.page'));
 let idx = 0;
 const pager = document.getElementById('pager');
 
+function pageNum(el) {
+  return el ? Number(el.dataset.page) : null;
+}
+
 function show(i) {
   const prev = idx;
   idx = (i + pages.length) % pages.length;
-  if (pages[prev]?.classList.contains('p3')) stopScene();
-  if (pages[prev]?.classList.contains('p4')) stopHourglass();
+  if (pageNum(pages[prev]) === 3) stopScene();
+  if (pageNum(pages[prev]) === 4) stopHourglass();
   pages.forEach((p, k) => p.classList.toggle('page--active', k === idx));
   pager.textContent = (idx + 1) + ' / ' + pages.length;
-  if (pages[idx].classList.contains('p3')) startScene();
-  if (pages[idx].classList.contains('p4')) startHourglass();
+  if (pageNum(pages[idx]) === 3) startScene();
+  if (pageNum(pages[idx]) === 4) startHourglass();
   const targetIdx = pageToTrackIndex[idx] ?? 0;
   if (tracks[targetIdx] && tracks[targetIdx].src !== audio.src) {
     setTrack(targetIdx, { autoplay: !audio.paused, fade: true });
@@ -32,14 +90,12 @@ document.addEventListener('keydown', e => {
 (function initSwipe() {
   let touchX = null;
   let touchY = null;
-  let startX = null;
   let startTime = null;
   document.querySelectorAll('.page').forEach(p => {
     p.addEventListener('touchstart', e => {
       const t = e.changedTouches[0];
       touchX = t.clientX;
       touchY = t.clientY;
-      startX = t.clientX;
       startTime = Date.now();
     }, { passive: true });
     p.addEventListener('touchmove', e => {
@@ -118,8 +174,6 @@ const Easing = {
   inOutSine: t => -(Math.cos(Math.PI * t) - 1) / 2,
   outBack: t => 1 + 2.7 * Math.pow(t - 1, 3) + 1.7 * Math.pow(t - 1, 2),
 };
-
-const prefersReducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const Icons = {
   play: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M7 4.5v15l13-7.5-13-7.5z"/></svg>',
@@ -526,7 +580,7 @@ function vizLoop() {
     const barW = w / vizData.length;
     for (let i = 0; i < vizData.length; i++) {
       const bh = (vizData[i] / 255) * h;
-      vctx.fillStyle = 'rgba(123, 58, 88, 0.6)';
+      vctx.fillStyle = 'rgba(166, 132, 255, 0.55)';
       vctx.fillRect(i * barW, h - bh, barW * 0.9, bh);
     }
   }
@@ -547,7 +601,7 @@ let sStart = 0;
 let sPhase = 0;
 let sZoomT = 0;
 let sRunning = false;
-let secret = 'amor';
+const secret = 'amor';
 let sDpr = 1;
 
 function resizeScene() {
@@ -613,8 +667,8 @@ function drawSky(now) {
   const W = sceneW();
   const H = sceneH();
   const g = sctx.createRadialGradient(W * 0.6, H * 0.2, 0, W * 0.6, H * 0.2, Math.max(W, H));
-  g.addColorStop(0, '#02030a');
-  g.addColorStop(1, '#000');
+  g.addColorStop(0, '#100826');
+  g.addColorStop(1, '#020103');
   sctx.fillStyle = g;
   sctx.fillRect(0, 0, W, H);
   for (const p of sParticles) {
@@ -630,7 +684,7 @@ function drawSky(now) {
       p.y += p.vy;
       p.life++;
       sctx.globalAlpha = 1 - p.life / p.max;
-      sctx.strokeStyle = '#cde2ff';
+      sctx.strokeStyle = '#d8c9ff';
       sctx.lineWidth = 2;
       sctx.beginPath();
       sctx.moveTo(p.x - p.vx * 4, p.y - p.vy * 4);
@@ -781,7 +835,7 @@ function sLoop(now = performance.now()) {
         sctx.save();
         sctx.translate(cx, cy);
         sctx.scale(s / 100, s / 100);
-        sctx.fillStyle = '#ff6b9e';
+        sctx.fillStyle = '#ff8fc0';
         sctx.beginPath();
         sctx.moveTo(0, 30);
         sctx.bezierCurveTo(0, -10, 50, -10, 50, 20);
@@ -806,7 +860,9 @@ document.getElementById('btnShot').onclick = () => {
   a.click();
 };
 
-let typed = '';
+function normalizePhrase(v) {
+  return v.trim().toLowerCase();
+}
 
 function triggerStar() {
   sctx.save();
@@ -823,29 +879,48 @@ function triggerStar() {
   sctx.restore();
 }
 
-document.getElementById('setSecret').onclick = () => {
-  const v = document.getElementById('secretWord').value.trim();
-  if (v) secret = v.toLowerCase();
-  alert('Palabra secreta lista');
-};
+const secretForm = document.getElementById('secretForm');
+const secretInput = document.getElementById('secretWord');
+const secretFeedback = document.getElementById('secretFeedback');
 
-document.addEventListener('keydown', e => {
-  if (!pages[idx].classList.contains('p3')) return;
-  const k = e.key.toLowerCase();
-  if (k.length === 1 && /[a-záéíóúñ]/.test(k)) {
-    typed = (typed + k).slice(-secret.length);
-    if (typed === secret.toLowerCase()) {
-      triggerStar();
-      typed = '';
-    }
-  } else if (k === 'escape') {
-    typed = '';
+secretForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const guess = normalizePhrase(secretInput.value);
+  secretFeedback.classList.remove('ok', 'err');
+  if (!guess) {
+    return;
+  }
+  if (guess === secret) {
+    triggerStar();
+    secretFeedback.textContent = 'Correcto, encontraste la palabra secreta';
+    secretFeedback.classList.add('ok');
+    secretInput.value = '';
+  } else {
+    secretFeedback.textContent = 'Esa no es la palabra secreta, intenta otra vez';
+    secretFeedback.classList.add('err');
+    secretInput.classList.remove('shake');
+    void secretInput.offsetWidth;
+    secretInput.classList.add('shake');
   }
 });
 
 const qrModal = document.getElementById('qrModal');
 const qrUrlEl = document.getElementById('qrUrl');
 const qrImg = document.getElementById('qrImg');
+
+function openModal(modalEl, opts = {}) {
+  modalEl.classList.add('show');
+  modalEl.setAttribute('aria-hidden', 'false');
+  if (opts.duck) {
+    try { audio.volume = Math.max(0, audio.volume - 0.3); } catch (e) { }
+  }
+}
+
+function closeModal(modalEl) {
+  modalEl.classList.remove('show');
+  modalEl.setAttribute('aria-hidden', 'true');
+  try { audio.volume = Number(volEl.value); } catch (e) { }
+}
 
 document.getElementById('btnQR').onclick = () => {
   const url = location.href;
@@ -880,6 +955,7 @@ let hgAmbient = [];
 let hgLastPhase = 'fall';
 let hgFlipCount = 0;
 let hgNoisePattern = null;
+let hgMsgTimer = null;
 
 function buildSandNoise() {
   const tile = document.createElement('canvas');
@@ -928,7 +1004,8 @@ function startHourglass() {
   }));
   cancelAnimationFrame(hgAnimId);
   hgMsg2.classList.remove('show');
-  setTimeout(() => {
+  clearTimeout(hgMsgTimer);
+  hgMsgTimer = setTimeout(() => {
     if (hgRunning) hgMsg2.classList.add('show');
   }, 60000);
   hgLoop();
@@ -937,6 +1014,7 @@ function startHourglass() {
 function stopHourglass() {
   hgRunning = false;
   cancelAnimationFrame(hgAnimId);
+  clearTimeout(hgMsgTimer);
   hctx.clearRect(0, 0, hgCanvas.width, hgCanvas.height);
   hgGrains = [];
   hgSparks = [];
@@ -1217,20 +1295,6 @@ function pulseHourglass() {
   if (prefersReducedMotion) return;
   hourglassWrap.classList.add('pulse');
   setTimeout(() => hourglassWrap.classList.remove('pulse'), 320);
-}
-
-function openModal(modalEl, opts = {}) {
-  modalEl.classList.add('show');
-  modalEl.setAttribute('aria-hidden', 'false');
-  if (opts.duck) {
-    try { audio.volume = Math.max(0, audio.volume - 0.3); } catch (e) { }
-  }
-}
-
-function closeModal(modalEl) {
-  modalEl.classList.remove('show');
-  modalEl.setAttribute('aria-hidden', 'true');
-  try { audio.volume = Number(volEl.value); } catch (e) { }
 }
 
 document.querySelectorAll('.modal').forEach(m => {
