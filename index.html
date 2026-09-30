@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover, user-scalable=no" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#0c0620" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -25,7 +25,7 @@
             <path d="M15 18l-6-6 6-6"/>
           </svg>
         </button>
-        <span class="header__page" id="pager">1 / 5</span>
+        <span class="header__page" id="pager" aria-live="polite">1 / 5</span>
         <button class="btn-icon" id="next" aria-label="Página siguiente">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M9 18l6-6-6-6"/>
@@ -33,8 +33,15 @@
         </button>
       </div>
     </header>
+    <nav class="chapters" aria-label="Capítulos del álbum">
+      <button type="button" class="chapter" data-chapter="0" aria-controls="chapter-1"><span aria-hidden="true">01</span>Nuestro tiempo</button>
+      <button type="button" class="chapter" data-chapter="1" aria-controls="chapter-2"><span aria-hidden="true">02</span>Idiomas</button>
+      <button type="button" class="chapter" data-chapter="2" aria-controls="chapter-3"><span aria-hidden="true">03</span>Universo</button>
+      <button type="button" class="chapter" data-chapter="3" aria-controls="chapter-4"><span aria-hidden="true">04</span>Reloj</button>
+      <button type="button" class="chapter" data-chapter="4" aria-controls="chapter-5"><span aria-hidden="true">05</span>Para ti</button>
+    </nav>
 
-    <section class="page page--active" data-page="1">
+    <section class="page page--active" data-page="1" id="chapter-1">
       <div class="page__content">
         <div class="page__header">
           <span class="page__badge">Página 1</span>
@@ -94,9 +101,9 @@
         </div>
 
         <div class="secret-btn-wrapper">
-          <button id="secretHeart" class="btn btn--secret">
+          <button id="secretHeart" aria-label="Abrir carta: mantén pulsado dos segundos o pulsa Enter" class="btn btn--secret">
             <span class="heart">♥</span>
-            <span>Mantén presionado 2s</span>
+            <span>Mantén presionado 2s</span><span class="hold-progress" aria-hidden="true"></span>
           </button>
         </div>
 
@@ -117,12 +124,12 @@
         </button>
         <h2 class="modal__title">Para ti</h2>
         <div class="modal__paper modal__paper--glass">
-          <p id="loveLetterText"></p>
+          <div id="loveLetterText" class="letter-text"></div>
         </div>
       </div>
     </div>
 
-    <section class="page" data-page="2">
+    <section class="page" data-page="2" id="chapter-2">
       <div class="page__content">
         <div class="page__header">
           <span class="page__badge">Página 2</span>
@@ -130,7 +137,7 @@
         </div>
 
         <div class="p2-controls">
-          <button class="btn btn--rain" id="toggleRain">
+          <button class="btn btn--rain" id="toggleRain" aria-pressed="false">
             <svg class="btn-icon__svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 3s6 6.5 6 10.5a6 6 0 1 1-12 0C6 9.5 12 3 12 3z"/>
             </svg>
@@ -154,8 +161,13 @@
       </div>
     </section>
 
-    <section class="page page--cosmic" data-page="3">
-      <canvas id="scene"></canvas>
+    <section class="page page--cosmic" data-page="3" id="chapter-3">
+      <canvas id="scene" role="img" aria-label="Viaje desde las estrellas hasta el universo"></canvas>
+      <div class="scene-controls" aria-label="Controles del viaje">
+        <button type="button" class="scene-button" id="replayScene">↺ Repetir viaje</button>
+        <button type="button" class="scene-button" id="skipScene">Ver el mensaje</button>
+        <button type="button" class="scene-button scene-button--gold" id="openConstellation" hidden>✧ Nuestra constelación</button>
+      </div>
       <div class="cosmic-overlay">
         <div class="cosmic-text" id="overlayText"></div>
       </div>
@@ -176,15 +188,37 @@
         </button>
       </div>
       <form class="secret-phrase" id="secretForm" autocomplete="off">
-        <input id="secretWord" placeholder="palabra secreta" class="secret-input" aria-label="Escribe la palabra secreta" />
+        <input id="secretWord" placeholder="palabra secreta" class="secret-input" aria-describedby="secretHint secretFeedback" aria-label="Escribe la palabra secreta" />
         <button type="submit" class="btn-icon btn-icon--ghost" id="setSecret" aria-label="Verificar palabra secreta">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l2.8 2.8M16.2 16.2 19 19M19 5l-2.8 2.8M7.8 16.2 5 19"/>
           </svg>
         </button>
-        <div class="secret-feedback" id="secretFeedback"></div>
+        <span id="secretHint" class="secret-hint">Una palabra puede abrir nuestro rincón entre las estrellas.</span><div class="secret-feedback" id="secretFeedback" role="status"></div>
       </form>
     </section>
+
+    <div id="constellationModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
+      <div class="modal__backdrop" data-close></div>
+      <div class="modal__dialog modal__dialog--constellation" role="document">
+        <button class="modal__close btn-icon" data-close aria-label="Cerrar constelación">×</button>
+        <span class="constellation-eyebrow">Un rincón solo nuestro</span>
+        <h2 class="modal__title">Nuestra constelación</h2>
+        <svg class="constellation-art" viewBox="0 0 400 240" aria-hidden="true">
+          <path class="constellation-line" d="M200 205 80 120 62 66 98 30 151 32 200 79 249 32 302 30 338 66 320 120Z"/>
+          <circle class="constellation-star" cx="200" cy="205" r="4" style="--delay:0ms"/><circle class="constellation-star" cx="80" cy="120" r="2.5" style="--delay:90ms"/><circle class="constellation-star" cx="62" cy="66" r="2.5" style="--delay:180ms"/><circle class="constellation-star" cx="98" cy="30" r="4" style="--delay:270ms"/><circle class="constellation-star" cx="151" cy="32" r="2.5" style="--delay:360ms"/><circle class="constellation-star" cx="200" cy="79" r="2.5" style="--delay:450ms"/><circle class="constellation-star" cx="249" cy="32" r="4" style="--delay:540ms"/><circle class="constellation-star" cx="302" cy="30" r="2.5" style="--delay:630ms"/><circle class="constellation-star" cx="338" cy="66" r="2.5" style="--delay:720ms"/><circle class="constellation-star" cx="320" cy="120" r="4" style="--delay:810ms"/>
+          <circle cx="32" cy="155" r="1"/><circle cx="362" cy="170" r="1.5"/><circle cx="175" cy="16" r="1"/>
+        </svg>
+        <p class="constellation-quote">Eres mi constelación favorita, mi planeta habitable, la órbita en la que quiero quedarme para siempre.</p>
+        <p class="constellation-hint">Elige dónde quieres quedarte un ratito.</p>
+        <div class="constellation-actions">
+          <button type="button" class="constellation-link" id="constellationLetter"><span aria-hidden="true">✉</span>Nuestra carta</button>
+          <button type="button" class="constellation-link" data-secret-page="0"><span aria-hidden="true">◷</span>Nuestro tiempo</button>
+          <button type="button" class="constellation-link" data-secret-page="4"><span aria-hidden="true">♡</span>Para ti</button>
+        </div>
+        <p class="constellation-saved" id="constellationSaved"></p>
+      </div>
+    </div>
 
     <div id="qrModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
       <div class="modal__backdrop" data-close></div>
@@ -207,8 +241,8 @@
       </div>
     </div>
 
-    <section class="page page--hourglass" data-page="4">
-      <div class="hourglass-container" id="hourglass">
+    <section class="page page--hourglass" data-page="4" id="chapter-4">
+      <div class="hourglass-container" id="hourglass" role="button" tabindex="0" aria-label="Voltear el reloj de arena">
         <canvas id="hgCanvas"></canvas>
         <div class="hourglass-shine"></div>
         <div class="hourglass-text hourglass-text--top">cuando este reloj acabe mi amor por ti también</div>
@@ -217,7 +251,7 @@
       </div>
     </section>
 
-    <section class="page" data-page="5">
+    <section class="page" data-page="5" id="chapter-5">
       <div class="page__content page__content--final">
         <div class="page__header">
           <span class="page__badge">Página 5</span>
@@ -262,7 +296,7 @@
     </div>
   </div>
 
-  <div id="player" class="player">
+  <div id="player" class="player" role="region" aria-label="Música del álbum">
     <button class="btn-icon btn-icon--player" id="prevTrack" aria-label="Pista anterior">
       <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
         <path d="M6 5v14M18 5 8 12l10 7V5z"/>
@@ -275,7 +309,13 @@
       </svg>
     </button>
     <span id="nowPlaying" class="player__track"></span>
+    <button type="button" class="btn-icon player__collapse" id="collapsePlayer" aria-label="Contraer reproductor" aria-expanded="true" aria-controls="playerTimeline">⌄</button>
     <input id="vol" type="range" min="0" max="1" step="0.01" value="0.6" aria-label="Volumen" class="player__volume" />
+    <div class="player__timeline" id="playerTimeline">
+      <span id="elapsedTime">0:00</span>
+      <input type="range" id="seek" min="0" max="100" value="0" step="0.1" disabled aria-label="Posición de la canción" />
+      <span id="durationTime">0:00</span>
+    </div>
   </div>
 
   <script src="js/app.js"></script>

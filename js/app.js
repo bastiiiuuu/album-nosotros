@@ -62,24 +62,42 @@ function pageNum(el) {
 }
 
 function show(i) {
+  cancelPress();
   const prev = idx;
   idx = (i + pages.length) % pages.length;
   if (pageNum(pages[prev]) === 3) stopScene();
   if (pageNum(pages[prev]) === 4) stopHourglass();
-  pages.forEach((p, k) => p.classList.toggle('page--active', k === idx));
+  pages.forEach((p, k) => {
+    p.style.setProperty('--page-from', i < prev ? '-18px' : '18px');
+    p.classList.toggle('page--active', k === idx);
+  });
+  document.querySelectorAll('[data-chapter]').forEach((button, k) => {
+    if (k === idx) button.setAttribute('aria-current', 'page');
+    else button.removeAttribute('aria-current');
+  });
   pager.textContent = (idx + 1) + ' / ' + pages.length;
   if (pageNum(pages[idx]) === 3) startScene();
   if (pageNum(pages[idx]) === 4) startHourglass();
+  if (idx === 1) resizeViz();
+  if (idx !== 1 && rainRunning) {
+    stopRain(); rainRunning = false;
+    toggleRainLabel.textContent = 'Lluvia de "Te amo"';
+    toggleRainBtn.setAttribute('aria-pressed', 'false');
+  }
+  window.scrollTo({ top: 0, behavior: 'instant' });
   const targetIdx = pageToTrackIndex[idx] ?? 0;
-  if (tracks[targetIdx] && tracks[targetIdx].src !== audio.src) {
+  if (tracks[targetIdx] && new URL(tracks[targetIdx].src, document.baseURI).href !== audio.src) {
     setTrack(targetIdx, { autoplay: !audio.paused, fade: true });
   }
 }
+
+document.querySelectorAll('[data-chapter]').forEach(button => button.addEventListener('click', () => show(Number(button.dataset.chapter))));
 
 document.getElementById('prev').onclick = () => show(idx - 1);
 document.getElementById('next').onclick = () => show(idx + 1);
 
 document.addEventListener('keydown', e => {
+  if (e.target.closest('input, textarea, select, [contenteditable]') || document.querySelector('.modal.show') || e.altKey || e.ctrlKey || e.metaKey) return;
   if (e.key === 'ArrowRight') show(idx + 1);
   if (e.key === 'ArrowLeft') show(idx - 1);
   if (e.key === 'm' || e.key === 'M') {
@@ -93,6 +111,7 @@ document.addEventListener('keydown', e => {
   let startTime = null;
   document.querySelectorAll('.page').forEach(p => {
     p.addEventListener('touchstart', e => {
+      if (e.target.closest('button, input, [role=button]')) { touchX = null; return; }
       const t = e.changedTouches[0];
       touchX = t.clientX;
       touchY = t.clientY;
@@ -206,8 +225,9 @@ const pageToTrackIndex = { 0: 0, 1: 1, 2: 2, 3: 3, 4: 0 };
 let currentIdx = 0;
 let isFading = false;
 
-const savedVol = localStorage.getItem('love.vol');
-if (savedVol) volEl.value = savedVol;
+let savedVol = null;
+try { savedVol = localStorage.getItem('love.vol'); } catch {}
+if (savedVol !== null && Number.isFinite(Number(savedVol))) volEl.value = Math.max(0, Math.min(1, Number(savedVol)));
 audio.volume = Number(volEl.value);
 
 function uiUpdatePlaying(playing) {
@@ -217,54 +237,45 @@ function uiUpdatePlaying(playing) {
 
 uiUpdatePlaying(false);
 
+// A transition belongs to one track request; a newer request cancels it.
+let fadeTimer = null;
+let trackVersion = 0;
 function setTrack(i, { autoplay = true, fade = true } = {}) {
-  i = (i + tracks.length) % tracks.length;
-  currentIdx = i;
-  const t = tracks[currentIdx];
-  nowPlaying.textContent = t.title;
-  if (fade) {
-    crossfadeTo(t.src, autoplay);
-  } else {
-    audio.src = t.src;
-    if (autoplay) {
-      audio.play().then(() => uiUpdatePlaying(true)).catch(() => uiUpdatePlaying(false));
-    }
-  }
+  currentIdx = (i + tracks.length) % tracks.length;
+  const track = tracks[currentIdx];
+  nowPlaying.textContent = track.title;
+  crossfadeTo(track.src, autoplay, fade);
 }
-
-function crossfadeTo(src, autoplay = true) {
-  if (isFading) return;
+function crossfadeTo(src, autoplay = true, fade = true) {
+  const version = ++trackVersion;
+  clearInterval(fadeTimer);
+  isFading = false;
+  const load = () => {
+    audio.pause();
+    audio.src = src;
+    audio.volume = Number(volEl.value);
+    uiUpdatePlaying(false);
+    if (!autoplay) return;
+    audio.play().then(() => {
+      if (version === trackVersion) uiUpdatePlaying(true);
+    }).catch(() => { if (version === trackVersion) uiUpdatePlaying(false); });
+  };
+  if (!fade || audio.paused || !autoplay) { load(); return; }
   isFading = true;
-  const step = 0.04;
-  const fadeOut = setInterval(() => {
-    audio.volume = Math.max(0, audio.volume - step);
+  fadeTimer = setInterval(() => {
+    audio.volume = Math.max(0, audio.volume - 0.12);
     if (audio.volume <= 0.01) {
-      clearInterval(fadeOut);
-      audio.pause();
-      audio.src = src;
-      audio.load();
-      if (autoplay) {
-        audio.play().then(() => {
-          const fadeIn = setInterval(() => {
-            audio.volume = Math.min(Number(volEl.value), audio.volume + step);
-            if (audio.volume >= Number(volEl.value) - 0.01) {
-              clearInterval(fadeIn);
-              isFading = false;
-            }
-          }, 60);
-          uiUpdatePlaying(true);
-        }).catch(() => {
-          uiUpdatePlaying(false);
-          isFading = false;
-        });
-      } else {
-        isFading = false;
-      }
+      clearInterval(fadeTimer); isFading = false; load();
     }
-  }, 60);
+  }, 40);
 }
 
 playBtn.addEventListener('click', async () => {
+  if (isFading) {
+    clearInterval(fadeTimer); isFading = false; ++trackVersion;
+    audio.pause(); audio.src = tracks[currentIdx].src;
+    audio.volume = Number(volEl.value); uiUpdatePlaying(false); return;
+  }
   if (audio.src === '') {
     setTrack(currentIdx, { autoplay: true, fade: false });
     return;
@@ -287,7 +298,7 @@ nextBtn.addEventListener('click', () => setTrack(currentIdx + 1));
 
 volEl.addEventListener('input', () => {
   audio.volume = Number(volEl.value);
-  localStorage.setItem('love.vol', volEl.value);
+  try { localStorage.setItem('love.vol', volEl.value); } catch {}
 });
 
 const sinceEl = document.getElementById('since');
@@ -362,16 +373,17 @@ const letterTextEl = document.getElementById('loveLetterText');
 let pressTimer = null;
 
 function openLetter() {
-  letterTextEl.textContent = loveLetter.trim();
-  letterModal.classList.add('show');
-  letterModal.setAttribute('aria-hidden', 'false');
-  try { audio.volume = Math.max(0, audio.volume - 0.3); } catch (e) { }
+  cancelPress();
+  letterTextEl.replaceChildren(...loveLetter.trim().split(/\n\s*\n/).map(text => {
+    const paragraph = document.createElement('p');
+    paragraph.textContent = text;
+    return paragraph;
+  }));
+  openModal(letterModal, { duck: true });
 }
 
 function closeLetter() {
-  letterModal.classList.remove('show');
-  letterModal.setAttribute('aria-hidden', 'true');
-  try { audio.volume = Number(volEl.value); } catch (e) { }
+  closeModal(letterModal);
 }
 
 letterModal.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', closeLetter));
@@ -382,6 +394,7 @@ document.addEventListener('keydown', e => {
 
 function startPress() {
   if (pressTimer) return;
+  secretHeart.classList.add('is-holding');
   pressTimer = setTimeout(() => {
     openLetter();
     pressTimer = null;
@@ -389,14 +402,18 @@ function startPress() {
 }
 
 function cancelPress() {
+  secretHeart.classList.remove('is-holding');
   if (pressTimer) {
     clearTimeout(pressTimer);
     pressTimer = null;
   }
 }
 
-['mousedown', 'touchstart'].forEach(ev => secretHeart.addEventListener(ev, startPress));
-['mouseup', 'mouseleave', 'touchend', 'touchcancel'].forEach(ev => secretHeart.addEventListener(ev, cancelPress));
+secretHeart.addEventListener('pointerdown', startPress);
+secretHeart.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (!e.repeat) openLetter(); } });
+secretHeart.addEventListener('keyup', cancelPress);
+secretHeart.addEventListener('blur', cancelPress);
+['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => secretHeart.addEventListener(ev, cancelPress));
 
 const finalMessage = `Hay momentos en los que el cansancio parece ganar y el camino se siente demasiado cuesta arriba. Cuando estés en uno de esos días, lee esto: todo el esfuerzo que estás invirtiendo ahora está construyendo a la persona que serás mañana. Las tormentas y los días pesados no están ahí para detenerte, sino para demostrarte de qué estás hecha. Tómate un respiro si lo necesitas, respira profundo, pero no dejes de avanzar. Confía en tu proceso; tienes una capacidad inmensa para lograr lo que te propongas.`;
 
@@ -462,7 +479,8 @@ const loveWords = [
 const loveGrid = document.getElementById('loveGrid');
 
 loveWords.forEach(w => {
-  const d = document.createElement('div');
+  const d = document.createElement('button');
+  d.type = 'button';
   d.className = 'love';
   d.innerHTML = `${w[0]} <small>${w[1]}</small>`;
   d.addEventListener('click', () => addReason(`${w[0]} — por ${randomReasonFragment()}`));
@@ -504,6 +522,7 @@ const toggleRainLabel = document.getElementById('toggleRainLabel');
 
 toggleRainBtn.onclick = () => {
   rainRunning = !rainRunning;
+  toggleRainBtn.setAttribute('aria-pressed', String(rainRunning));
   toggleRainLabel.textContent = rainRunning ? 'Detener lluvia' : 'Lluvia de "Te amo"';
   if (rainRunning) {
     startRain();
@@ -587,9 +606,13 @@ function vizLoop() {
   requestAnimationFrame(vizLoop);
 }
 
-playBtn.addEventListener('click', () => {
-  if (!audioCtx && !audio.paused) ensureAnalyser();
+audio.addEventListener('play', () => {
+  ensureAnalyser();
+  if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+  uiUpdatePlaying(true);
 });
+audio.addEventListener('pause', () => uiUpdatePlaying(false));
+audio.addEventListener('error', () => { uiUpdatePlaying(false); nowPlaying.textContent = 'No se pudo cargar la pista'; });
 
 const scene = document.getElementById('scene');
 const sctx = scene.getContext('2d');
@@ -602,6 +625,7 @@ let sPhase = 0;
 let sZoomT = 0;
 let sRunning = false;
 const secret = 'amor';
+let secretStarUnlocked = false;
 let sDpr = 1;
 
 function resizeScene() {
@@ -626,8 +650,8 @@ function startScene() {
   resizeScene();
   cancelAnimationFrame(sAnimId);
   sParticles = [];
-  sPhase = 0;
-  sZoomT = 0;
+  sPhase = prefersReducedMotion ? 3 : 0;
+  sZoomT = prefersReducedMotion ? 15 : 0;
   overlayText.textContent = '';
   overlayText.classList.remove('show');
   sStart = performance.now();
@@ -703,7 +727,7 @@ function drawCentered(s) {
 
 function hideCentered() {
   overlayText.classList.remove('show');
-  setTimeout(() => { overlayText.textContent = ''; }, 600);
+  overlayText.textContent = '';
 }
 
 function drawEarth(cx, cy, R) {
@@ -735,7 +759,7 @@ function sLoop(now = performance.now()) {
   const elapsed = (now - sStart) / 1000;
   const W = sceneW();
   const H = sceneH();
-  if (elapsed < 5 && Math.random() < 0.06) addShooting();
+  if (!prefersReducedMotion && elapsed < 5 && Math.random() < 0.06) addShooting();
   if (elapsed >= 5 && sPhase === 0) {
     drawCentered('pide un deseo..');
     sPhase = 1;
@@ -750,7 +774,7 @@ function sLoop(now = performance.now()) {
     sZoomT = 0;
   }
   if (sPhase >= 3) {
-    sZoomT += 1 / 60;
+    if (!prefersReducedMotion) sZoomT += 1 / 60;
     const stageDur = 3;
     const stage = Math.min(5, Math.floor(sZoomT / stageDur));
     const local = (sZoomT % stageDur) / stageDur;
@@ -846,7 +870,7 @@ function sLoop(now = performance.now()) {
         sctx.restore();
         sctx.fillText('Universo observable', cx, cy - R * 1.6);
         sctx.font = 'italic 22px Fraunces, Georgia, serif';
-        sctx.fillText('mi amor por ti es más grande que todo esto', cx, cy + s * 0.55);
+        drawCanvasMessage('mi amor por ti es más grande que todo esto', cx, cy + s * 0.95, W - 40);
         break;
       }
     }
@@ -861,22 +885,7 @@ document.getElementById('btnShot').onclick = () => {
 };
 
 function normalizePhrase(v) {
-  return v.trim().toLowerCase();
-}
-
-function triggerStar() {
-  sctx.save();
-  sctx.fillStyle = '#ffd166';
-  sctx.shadowColor = '#ffd166';
-  sctx.shadowBlur = 18;
-  sctx.beginPath();
-  sctx.arc(40, 40, 5, 0, Math.PI * 2);
-  sctx.fill();
-  sctx.shadowBlur = 0;
-  sctx.fillStyle = '#fff';
-  sctx.font = 'italic 18px Fraunces, Georgia, serif';
-  sctx.fillText('Tu estrella', 80, 46);
-  sctx.restore();
+  return v.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
 const secretForm = document.getElementById('secretForm');
@@ -888,11 +897,13 @@ secretForm.addEventListener('submit', e => {
   const guess = normalizePhrase(secretInput.value);
   secretFeedback.classList.remove('ok', 'err');
   if (!guess) {
+    secretFeedback.textContent = 'Escribe la palabra para descubrir la sorpresa.';
+    secretInput.focus();
     return;
   }
   if (guess === secret) {
-    triggerStar();
-    secretFeedback.textContent = 'Correcto, encontraste la palabra secreta';
+    unlockConstellation();
+    secretFeedback.textContent = 'Has abierto nuestra constelación.';
     secretFeedback.classList.add('ok');
     secretInput.value = '';
   } else {
@@ -909,15 +920,22 @@ const qrUrlEl = document.getElementById('qrUrl');
 const qrImg = document.getElementById('qrImg');
 
 function openModal(modalEl, opts = {}) {
+  if (modalEl.classList.contains('show')) return;
+  modalEl._returnFocus = document.activeElement;
   modalEl.classList.add('show');
   modalEl.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('modal-open');
+  modalEl.querySelector('button')?.focus();
   if (opts.duck) {
     try { audio.volume = Math.max(0, audio.volume - 0.3); } catch (e) { }
   }
 }
 
 function closeModal(modalEl) {
+  if (!modalEl.classList.contains('show')) return;
   modalEl.classList.remove('show');
+  document.body.classList.remove('modal-open');
+  modalEl._returnFocus?.focus();
   modalEl.setAttribute('aria-hidden', 'true');
   try { audio.volume = Number(volEl.value); } catch (e) { }
 }
@@ -1021,6 +1039,7 @@ function stopHourglass() {
 }
 
 hourglassWrap.addEventListener('click', flipHourglass);
+hourglassWrap.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flipHourglass(); } });
 
 function flipHourglass() {
   if (!hgRunning) return;
@@ -1309,6 +1328,94 @@ document.addEventListener('keydown', e => {
     document.querySelectorAll('.modal.show').forEach(m => closeModal(m));
   }
 });
+
+document.querySelectorAll('.modal').forEach(modal => {
+  document.body.appendChild(modal);
+  const title = modal.querySelector('h2');
+  title.id = modal.id + '-title';
+  modal.setAttribute('aria-labelledby', title.id);
+  modal.addEventListener('keydown', e => {
+    if (e.key !== 'Tab') return;
+    const buttons = [...modal.querySelectorAll('button, a[href], input')];
+    const first = buttons[0], last = buttons[buttons.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+});
+
+// The secret is a keepsake unlock, saved only in this browser.
+const constellationModal = document.getElementById('constellationModal');
+const constellationButton = document.getElementById('openConstellation');
+let constellationSaved = false;
+try { secretStarUnlocked = localStorage.getItem('love.constellation') === 'unlocked'; constellationSaved = secretStarUnlocked; } catch {}
+function syncConstellation() {
+  constellationButton.hidden = !secretStarUnlocked;
+  secretForm.hidden = secretStarUnlocked;
+  document.getElementById('constellationSaved').textContent = constellationSaved
+    ? 'Este rincón queda guardado en este navegador. Puedes volver desde Universo.'
+    : 'Puedes volver a este rincón desde Universo mientras el álbum siga abierto.';
+}
+function unlockConstellation() {
+  secretStarUnlocked = true;
+  try { localStorage.setItem('love.constellation', 'unlocked'); constellationSaved = true; } catch {}
+  syncConstellation();
+  openModal(constellationModal);
+  constellationModal._returnFocus = constellationButton;
+}
+constellationButton.addEventListener('click', () => openModal(constellationModal));
+document.getElementById('constellationLetter').addEventListener('click', () => {
+  closeModal(constellationModal);
+  openLetter();
+  letterModal._returnFocus = constellationButton;
+});
+document.querySelectorAll('[data-secret-page]').forEach(button => button.addEventListener('click', () => {
+  closeModal(constellationModal);
+  const pageIndex = Number(button.dataset.secretPage);
+  show(pageIndex);
+  document.querySelector('[data-chapter="' + pageIndex + '"]').focus();
+}));
+syncConstellation();
+document.getElementById('replayScene').addEventListener('click', startScene);
+document.getElementById('skipScene').addEventListener('click', () => {
+  sPhase = 3; sZoomT = 15; hideCentered();
+});
+function drawCanvasMessage(text, x, y, maxWidth) {
+  const words = text.split(' ');
+  let line = '';
+  for (const word of words) {
+    const candidate = line ? line + ' ' + word : word;
+    if (line && sctx.measureText(candidate).width > maxWidth) {
+      sctx.fillText(line, x, y); y += 28; line = word;
+    } else line = candidate;
+  }
+  sctx.fillText(line, x, y);
+}
+
+const seek = document.getElementById('seek');
+const elapsedTime = document.getElementById('elapsedTime');
+const durationTime = document.getElementById('durationTime');
+function formatTrackTime(value) {
+  if (!Number.isFinite(value)) return '0:00';
+  return Math.floor(value / 60) + ':' + String(Math.floor(value % 60)).padStart(2, '0');
+}
+function updateTimeline() {
+  const ready = Number.isFinite(audio.duration) && audio.duration > 0;
+  seek.disabled = !ready;
+  seek.max = ready ? audio.duration : 100;
+  seek.value = ready ? audio.currentTime : 0;
+  elapsedTime.textContent = formatTrackTime(audio.currentTime);
+  durationTime.textContent = formatTrackTime(audio.duration);
+  seek.setAttribute('aria-valuetext', elapsedTime.textContent + ' de ' + durationTime.textContent);
+}
+['timeupdate', 'loadedmetadata', 'durationchange', 'emptied'].forEach(event => audio.addEventListener(event, updateTimeline));
+seek.addEventListener('input', () => { if (!seek.disabled) audio.currentTime = Number(seek.value); });
+document.getElementById('collapsePlayer').addEventListener('click', event => {
+  const collapsed = document.getElementById('player').classList.toggle('player--collapsed');
+  event.currentTarget.setAttribute('aria-expanded', String(!collapsed));
+  event.currentTarget.setAttribute('aria-label', collapsed ? 'Expandir reproductor' : 'Contraer reproductor');
+  event.currentTarget.textContent = collapsed ? '⌃' : '⌄';
+});
+updateTimeline();
 
 show(0);
 setTrack(0, { autoplay: false, fade: false });
