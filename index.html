@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Work+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <meta name="description" content="Álbum romántico interactivo: contador, te amo en muchos idiomas, estrellas fugaces, viaje cósmico y un reloj de arena infinito." />
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=20260930-animations">
 </head>
 <body>
   <div id="starfield"></div>
@@ -162,16 +162,34 @@
     </section>
 
     <section class="page page--cosmic" data-page="3" id="chapter-3">
-      <canvas id="scene" role="img" aria-label="Viaje desde las estrellas hasta el universo"></canvas>
       <div class="scene-controls" aria-label="Controles del viaje">
         <button type="button" class="scene-button" id="replayScene">↺ Repetir viaje</button>
+        <button type="button" class="scene-button" id="pauseScene" aria-pressed="false">Pausar viaje</button>
         <button type="button" class="scene-button" id="skipScene">Ver el mensaje</button>
         <button type="button" class="scene-button scene-button--gold" id="openConstellation" hidden>✧ Nuestra constelación</button>
       </div>
-      <div class="cosmic-overlay">
-        <div class="cosmic-text" id="overlayText"></div>
+      <div class="space-stage">
+        <h2 class="space-stage__title" id="sceneStage" aria-live="polite">Bajo las estrellas</h2>
+        <canvas id="scene" role="img" aria-label="Viaje desde las estrellas hasta el universo"></canvas>
+        <div class="cosmic-overlay"><div class="cosmic-text" id="overlayText" aria-live="polite"></div></div>
       </div>
-      <div class="cosmic-tools">
+      <nav class="journey-stops" aria-label="Etapas del viaje">
+        <button type="button" class="journey-stop" data-scene-time="11">Tierra</button>
+        <button type="button" class="journey-stop" data-scene-time="17">Sistema Solar</button>
+        <button type="button" class="journey-stop" data-scene-time="23">Vía Láctea</button>
+        <button type="button" class="journey-stop" data-scene-time="29">Grupo Local</button>
+        <button type="button" class="journey-stop" data-scene-time="35">Virgo</button>
+        <button type="button" class="journey-stop" data-scene-time="41">Universo</button>
+      </nav>
+      <div class="cosmic-bottom"><form class="secret-phrase" id="secretForm" autocomplete="off">
+        <input id="secretWord" placeholder="palabra secreta" class="secret-input" aria-describedby="secretHint secretFeedback" aria-label="Escribe la palabra secreta" />
+        <button type="submit" class="btn-icon btn-icon--ghost" id="setSecret" aria-label="Verificar palabra secreta">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l2.8 2.8M16.2 16.2 19 19M19 5l-2.8 2.8M7.8 16.2 5 19"/>
+          </svg>
+        </button>
+        <span id="secretHint" class="secret-hint">Una palabra puede abrir nuestro rincón entre las estrellas.</span><div class="secret-feedback" id="secretFeedback" role="status"></div>
+      </form><div class="cosmic-tools">
         <button class="btn-icon btn-icon--ghost" id="btnShot" aria-label="Capturar imagen">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/>
@@ -186,16 +204,7 @@
             <path d="M14 14h3v3h-3zM20 14v3M14 20h3M20 20v.01"/>
           </svg>
         </button>
-      </div>
-      <form class="secret-phrase" id="secretForm" autocomplete="off">
-        <input id="secretWord" placeholder="palabra secreta" class="secret-input" aria-describedby="secretHint secretFeedback" aria-label="Escribe la palabra secreta" />
-        <button type="submit" class="btn-icon btn-icon--ghost" id="setSecret" aria-label="Verificar palabra secreta">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l2.8 2.8M16.2 16.2 19 19M19 5l-2.8 2.8M7.8 16.2 5 19"/>
-          </svg>
-        </button>
-        <span id="secretHint" class="secret-hint">Una palabra puede abrir nuestro rincón entre las estrellas.</span><div class="secret-feedback" id="secretFeedback" role="status"></div>
-      </form>
+      </div></div>
     </section>
 
     <div id="constellationModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
@@ -242,12 +251,17 @@
     </div>
 
     <section class="page page--hourglass" data-page="4" id="chapter-4">
-      <div class="hourglass-container" id="hourglass" role="button" tabindex="0" aria-label="Voltear el reloj de arena">
-        <canvas id="hgCanvas"></canvas>
-        <div class="hourglass-shine"></div>
-        <div class="hourglass-text hourglass-text--top">cuando este reloj acabe mi amor por ti también</div>
-        <div class="hourglass-text hourglass-text--bottom" id="hgMsg2">…nunca, porque este reloj nunca parará</div>
-        <div class="hourglass-hint">toca para voltearlo</div>
+      <div class="hourglass-heading">
+        <span class="page__badge">Para siempre</span>
+        <h2 class="hourglass-text hourglass-text--top">cuando este reloj acabe mi amor por ti también</h2>
+      </div>
+      <div class="hourglass-container" id="hourglass" role="button" tabindex="0" aria-label="Voltear el reloj de arena" aria-describedby="sandStatus">
+        <canvas id="hgCanvas" aria-hidden="true"></canvas>
+      </div>
+      <div class="hourglass-ending"><p class="hourglass-text hourglass-text--bottom" id="hgMsg2">…nunca, porque este reloj nunca parará</p></div>
+      <div class="hourglass-controls">
+        <button type="button" class="scene-button" id="pauseHourglass" aria-pressed="false">Pausar arena</button>
+        <span class="sand-status" id="sandStatus" role="status">Toca el reloj para voltearlo</span>
       </div>
     </section>
 
@@ -318,6 +332,6 @@
     </div>
   </div>
 
-  <script src="js/app.js"></script>
+  <script src="js/app.js?v=20260930-animations"></script>
 </body>
 </html>

@@ -1390,3 +1390,61 @@ body::before { opacity: .18; }
   .constellation-line { stroke-dashoffset: 0; }
   .is-holding .hold-progress { animation: none; transform: scaleX(1); }
 }
+
+
+/* Canvas scenes: reserve space for artwork, copy and controls separately. */
+.page--cosmic.page--active { display: flex; flex-direction: column; gap: 0; }
+.page--cosmic { min-height: 0; overflow: hidden; padding: 0; border: 1px solid rgba(180,160,220,.14); background: #0b0a16; }
+.page--cosmic .scene-controls { position: static; padding: 16px 18px; margin: 0; border-bottom: 1px solid rgba(190,170,220,.09); background: rgba(255,255,255,.015); }
+.scene-controls .scene-button { background: transparent; min-height: 40px; }
+.scene-button:disabled { opacity: .5; cursor: default; }
+.scene-button[aria-pressed="true"] { background: rgba(167,137,215,.13); border-color: #a78dcc; }
+.space-stage { position: relative; height: 490px; width: 100%; isolation: isolate; }
+.space-stage #scene { border-radius: 0; }
+.space-stage__title { position: absolute; top: 24px; left: 20px; right: 20px; z-index: 2; color: #e7dcf4; text-align: center; font-size: 13px; font-family: var(--font-body); font-weight: 400; letter-spacing: .15em; text-transform: uppercase; pointer-events: none; }
+.space-stage .cosmic-overlay { inset: auto 24px 18px; min-height: 88px; padding: 0; }
+.space-stage .cosmic-text { max-width: 570px; font-size: clamp(20px,2.7vw,28px); line-height: 1.5; text-wrap: balance; }
+.journey-stops { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 4px; padding: 12px 18px; border-top: 1px solid rgba(190,170,220,.09); border-bottom: 1px solid rgba(190,170,220,.09); }
+.journey-stop { display: flex; align-items: center; flex-direction: column; gap: 8px; background: transparent; border: none; border-radius: 8px; color: #a99abb; font: 11px var(--font-body); padding: 10px 4px; cursor: pointer; min-height: 48px; }
+.journey-stop::before { content: ''; height: 5px; width: 5px; border-radius: 50%; background: #554565; transition: background .3s, box-shadow .3s; }
+.journey-stop[aria-current] { color: #f0dfbb; background: rgba(239,208,151,.035); }
+.journey-stop[aria-current]::before { background: #ead1a1; box-shadow: 0 0 10px #c4a472; }
+.journey-stop:hover { color: #f6eaff; background: rgba(255,255,255,.04); }
+.cosmic-bottom { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 18px; }
+.cosmic-bottom .secret-phrase { position: static; max-width: 400px; flex: 1; margin: 0; }
+.cosmic-bottom .secret-input { width: 0; min-width: 100px; }
+.cosmic-bottom .cosmic-tools { position: static; flex-shrink: 0; margin-left: auto; }
+.secret-feedback:empty { min-height: 0; }
+.page--hourglass.page--active { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.page--hourglass { padding: 30px 20px; min-height: 0; background: radial-gradient(ellipse at 50% 55%,rgba(69,46,36,.16),rgba(13,10,20,.75)); border: 1px solid rgba(213,184,137,.12); overflow: hidden; perspective: none; }
+.hourglass-heading { text-align: center; max-width: 480px; }
+.hourglass-heading .page__badge { color: #d7bd8f; margin-bottom: 14px; }
+.page--hourglass .hourglass-text { position: static; padding: 0; width: auto; font-size: clamp(18px,2.7vw,24px); font-family: var(--font-display); font-style: italic; line-height: 1.6; }
+.hourglass-container { width: 100%; max-width: 510px; height: 420px; z-index: auto; transform: none; transform-style: flat; transition: none; will-change: auto; border-radius: 20px; }
+.hourglass-container:hover { background: rgba(243,216,143,.012); }
+.hourglass-container #hgCanvas { border-radius: 0; }
+.hourglass-ending { max-width: 430px; min-height: 76px; text-align: center; }
+.hourglass-ending .hourglass-text { color: #eed8b0; }
+.hourglass-controls { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 12px; }
+.hourglass-controls .scene-button { border-color: rgba(233,202,155,.2); color: #d7c3a4; }
+.sand-status { color: #b9a997; font-size: 11px; }
+@media(max-width:600px){
+  .page--cosmic { padding: 0; min-height: 0; }
+  .page--cosmic .scene-controls { padding: 12px; gap: 6px; }
+  .scene-controls .scene-button { font-size: 11px; padding: 8px 10px; }
+  .space-stage { height: 390px; }
+  .space-stage__title { top: 20px; font-size: 10px; }
+  .space-stage .cosmic-overlay { inset: auto 20px 16px; min-height: 80px; }
+  .space-stage .cosmic-text { font-size: 20px; }
+  .journey-stops { grid-template-columns: repeat(3,minmax(0,1fr)); padding: 8px; gap: 2px; }
+  .journey-stop { flex-direction: row; justify-content: center; min-height: 40px; font-size: 10px; }
+  .cosmic-bottom { flex-wrap: wrap; gap: 12px; padding: 14px; }
+  .cosmic-bottom .secret-phrase { flex-basis: 100%; }
+  .cosmic-bottom .cosmic-tools { gap: 8px; }
+  .page--hourglass { padding: 24px 16px; }
+  .hourglass-container { height: 355px; }
+  .hourglass-heading { max-width: 320px; }
+  .hourglass-heading .hourglass-text { font-size: 20px; }
+  .hourglass-ending { min-height: 70px; }
+  .hourglass-ending .hourglass-text { font-size: 18px; }
+}
