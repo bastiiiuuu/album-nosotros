@@ -11,14 +11,14 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Work+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <meta name="description" content="Álbum romántico interactivo: contador, te amo en muchos idiomas, estrellas fugaces, viaje cósmico y un reloj de arena infinito." />
-  <link rel="stylesheet" href="css/style.css?v=20260930-animations">
+  <link rel="stylesheet" href="css/style.css?v=20261001-answers">
 </head>
 <body>
   <div id="starfield"></div>
 
   <div class="app">
     <header class="header">
-      <h1 class="header__title">Álbum de nosotros <span class="heart">♥</span></h1>
+      <h1 class="header__title">Álbum de nosotros <button type="button" class="heart reunion-entry" id="reunionEntry" aria-label="Corazón del álbum">♥</button></h1>
       <div class="header__nav">
         <button class="btn-icon" id="prev" aria-label="Página anterior">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -207,6 +207,60 @@
       </div></div>
     </section>
 
+
+    <div id="reunionGate" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
+      <div class="modal__backdrop" data-close></div>
+      <div class="modal__dialog modal__dialog--reunion-gate">
+        <button type="button" class="modal__close btn-icon" data-close aria-label="Cerrar">×</button>
+        <h2 class="modal__title">Una frase para entrar</h2>
+        <form id="reunionForm" class="reunion-form">
+          <label for="reunionKey">Escribe la frase</label>
+          <input type="password" id="reunionKey" autocomplete="off" maxlength="120" autocapitalize="none" spellcheck="false" aria-describedby="reunionFeedback">
+          <button type="submit" class="scene-button">Abrir</button>
+          <p id="reunionFeedback" class="reunion-feedback" role="status"></p>
+        </form>
+      </div>
+    </div>
+    <div id="reunionModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
+      <div class="modal__backdrop" data-close></div>
+      <div class="modal__dialog modal__dialog--reunion">
+        <button type="button" class="modal__close btn-icon" data-close aria-label="Cerrar">×</button>
+        <p class="reunion-eyebrow">Todavía hay un hilo</p>
+        <canvas id="reunionCanvas" role="img" aria-label="Dos caminos de luz se unen y forman un corazón tejido de partículas"></canvas>
+        <h2 id="reunionQuestion" class="reunion-question">¿Quieres que lo volvamos a intentar?</h2>
+
+        <div id="reunionAccepted" class="reunion-accepted" hidden>
+          <svg class="reunion-kitty" viewBox="0 0 320 270" role="img" aria-label="Una gatita blanca con lazo rosa abrazando un corazón">
+            <g class="kitty-sparkles" fill="#f3d88f"><path d="m42 68 4 12 12 4-12 4-4 12-4-12-12-4 12-4ZM276 132l3 9 9 3-9 3-3 9-3-9-9-3 9-3Z"/><circle cx="264" cy="48" r="3"/><circle cx="57" cy="196" r="3"/></g>
+            <ellipse cx="160" cy="248" rx="85" ry="10" fill="#d995c7" opacity=".15"/>
+            <g stroke="#543548" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+              <ellipse cx="160" cy="199" rx="60" ry="49" fill="#fff5f4"/>
+              <path d="M76 102 80 39 123 62Q160 48 197 62L240 39 244 103C271 188 49 188 76 102Z" fill="#fffaf6"/>
+              <path d="m87 64 3 27 19-18M232 64l-3 27-19-18" fill="#f9c8d7" stroke="none"/>
+              <g fill="#342735" stroke="none"><ellipse cx="125" cy="113" rx="5" ry="8"/><ellipse cx="195" cy="113" rx="5" ry="8"/></g>
+              <ellipse cx="160" cy="125" rx="7" ry="5" fill="#f3d88f" stroke-width="2"/>
+              <path d="m69 113-22-4m23 17-25 3m29 10-21 9m198-35 22-4m-23 17 25 3m-29 10 21 9"/>
+              <g fill="#ed86b5"><path d="M217 65Q189 30 188 63T217 78Q248 95 244 65T217 65Z"/><circle cx="217" cy="70" r="10"/></g>
+              <path class="kitty-heart" d="M160 229C146 214 103 190 112 168 123 144 151 158 160 173 170 151 200 150 208 170 216 194 176 216 160 229Z" fill="#ef83ad"/>
+              <ellipse cx="110" cy="189" rx="15" ry="20" fill="#fffaf6" transform="rotate(-25 110 189)"/>
+              <ellipse cx="210" cy="189" rx="15" ry="20" fill="#fffaf6" transform="rotate(25 210 189)"/>
+            </g>
+          </svg>
+          <p>Te guardé este abrazo.</p>
+        </div>
+        <div id="reunionChoices" class="reunion-choices" hidden>
+          <button type="button" class="scene-button reunion-yes" id="reunionYes">Sí</button>
+          <div class="reunion-no-area">
+            <button type="button" class="scene-button reunion-no" id="reunionNo" data-position="0">No</button>
+          </div>
+          <p id="reunionAnswerStatus" class="reunion-answer-status" role="status"></p>
+        </div>
+        <div class="reunion-actions">
+          <button type="button" class="scene-button" id="replayReunion">Volver a verlo</button>
+          <button type="button" class="scene-button" data-close>Volver al álbum</button>
+        </div>
+      </div>
+    </div>
     <div id="constellationModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
       <div class="modal__backdrop" data-close></div>
       <div class="modal__dialog modal__dialog--constellation" role="document">
@@ -332,6 +386,6 @@
     </div>
   </div>
 
-  <script src="js/app.js?v=20260930-animations"></script>
+  <script src="js/app.js?v=20261001-answers"></script>
 </body>
 </html>

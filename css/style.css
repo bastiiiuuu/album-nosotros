@@ -1448,3 +1448,38 @@ body::before { opacity: .18; }
   .hourglass-ending { min-height: 70px; }
   .hourglass-ending .hourglass-text { font-size: 18px; }
 }
+
+/* The entry keeps the existing header heart; the invitation has no public link. */
+.reunion-entry { padding: 0; border: 0; background: none; color: var(--accent-rose); font: inherit; line-height: inherit; cursor: default; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.modal__dialog--reunion-gate { max-width: 370px; background: #1b1229; }
+.reunion-form { display: grid; gap: 14px; }
+.reunion-form label { font-size: 13px; color: var(--text-secondary); }
+.reunion-form input { width: 100%; min-height: 48px; background: rgba(255,255,255,.04); border: 1px solid rgba(200,180,230,.22); color: var(--text-primary); padding: 12px 14px; border-radius: 12px; }
+.reunion-feedback { min-height: 20px; font-size: 12px; color: var(--accent-rose); }
+.modal__dialog--reunion { width: min(100%,650px); max-width: 650px; padding: 42px 24px 26px; background: radial-gradient(ellipse at 50% 42%,#24162e,#100b19 74%); border-color: rgba(226,200,173,.2); text-align: center; }
+.reunion-eyebrow { font-size: 10px; text-transform: uppercase; letter-spacing: .25em; color: #baa8c3; }
+#reunionCanvas { width: 100%; height: clamp(230px,38vh,340px); display: block; }
+.reunion-question { margin: 4px auto 28px; max-width: 460px; font-family: var(--font-display); font-weight: 400; font-size: clamp(25px,5vw,36px); line-height: 1.4; color: #f2e5d8; opacity: 0; transform: translateY(10px); transition: opacity 1.2s,transform 1.2s; text-wrap: balance; }
+.reunion-question.is-revealed { opacity: 1; transform: none; }
+.reunion-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; }
+.reunion-actions .scene-button { font-size: 12px; }
+@media(prefers-reduced-motion:reduce){.reunion-question {transition:none;}}
+
+/* Bounded positions keep the playful answer inside the dialog on touch screens. */
+.modal__dialog--reunion [hidden] { display: none !important; }
+.reunion-choices { margin: 0 auto 12px; width: min(100%,360px); }
+.reunion-choices button { min-width: 88px; min-height: 48px; touch-action: manipulation; }
+.reunion-yes { background: #784467; border-color: #eea6ca; }
+.reunion-no-area { position: relative; height: 112px; margin-top: 8px; }
+.reunion-no { position: absolute; left: calc(50% - 44px); top: 0; }
+.reunion-no[data-position="1"] { left: 0; top: 60px; }
+.reunion-no[data-position="2"] { left: calc(100% - 88px); top: 0; }
+.reunion-no[data-position="3"] { left: calc(50% - 44px); top: 60px; }
+.reunion-answer-status { min-height: 20px; font-size: 12px; color: var(--text-secondary); }
+.reunion-kitty { display: block; width: min(100%,290px); margin: 0 auto; filter: drop-shadow(0 8px 24px #e698bb25); animation: kitty-arrives .7s ease-out both; }
+.reunion-accepted p { color: #f4c9dd; margin: 0 0 20px; }
+.kitty-sparkles { animation: kitty-shimmer 1.5s ease-in-out 3 alternate; }
+@keyframes kitty-arrives { from { opacity: 0; transform: translateY(18px) scale(.93); } to { opacity: 1; transform: none; } }
+@keyframes kitty-shimmer { from { opacity: .35; } to { opacity: 1; } }
+@media (max-height: 760px) { .modal__dialog--reunion { padding-top: 32px; } #reunionCanvas { height: 200px; } .reunion-question { margin-bottom: 16px; font-size: 25px; } }
+@media (prefers-reduced-motion: reduce) { .reunion-kitty,.kitty-sparkles { animation: none; } }

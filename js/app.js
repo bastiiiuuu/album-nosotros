@@ -621,11 +621,11 @@ function seededRandom(seed) {
   return () => { seed = (1664525 * seed + 1013904223) >>> 0; return seed / 4294967296; };
 }
 
-function canvasPlayback(canvas, draw) {
+function canvasPlayback(canvas, draw, modal = null) {
   const context = canvas.getContext('2d');
   const state = { time: 0, width: 1, height: 1, active: false, paused: false, dpr: 1 };
   let frame = 0, last = 0;
-  const blocked = () => document.hidden || !!document.querySelector('.modal.show');
+  const blocked = () => document.hidden || (modal ? !modal.classList.contains('show') : !!document.querySelector('.modal.show'));
   function size() {
     const rect = canvas.getBoundingClientRect();
     if (!rect.width || !rect.height) return false;
@@ -1129,11 +1129,11 @@ document.addEventListener('keydown', e => {
 document.querySelectorAll('.modal').forEach(modal => {
   document.body.appendChild(modal);
   const title = modal.querySelector('h2');
-  title.id = modal.id + '-title';
+  if (!title.id) title.id = modal.id + '-title';
   modal.setAttribute('aria-labelledby', title.id);
   modal.addEventListener('keydown', e => {
     if (e.key !== 'Tab') return;
-    const buttons = [...modal.querySelectorAll('button, a[href], input')];
+    const buttons = [...modal.querySelectorAll('button, a[href], input')].filter(button => !button.disabled && button.getClientRects().length);
     const first = buttons[0], last = buttons[buttons.length - 1];
     if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
@@ -1200,6 +1200,162 @@ document.getElementById('collapsePlayer').addEventListener('click', event => {
   event.currentTarget.textContent = collapsed ? '⌃' : '⌄';
 });
 updateTimeline();
+
+// A deliberately hidden keepsake; no access state is persisted or sent anywhere.
+const reunionEntry=document.getElementById('reunionEntry');
+const reunionGate=document.getElementById('reunionGate');
+const reunionModal=document.getElementById('reunionModal');
+const reunionKey=document.getElementById('reunionKey');
+const reunionFeedback=document.getElementById('reunionFeedback');
+const reunionQuestion=document.getElementById('reunionQuestion');
+const reunionDigest='ad545e0c2d96d36db5f022f3cb739b5059f66874e3156ad177cd9ad515923308';
+let reunionHold=null,reunionAttempt=0;
+let reunionClicks=0,reunionLastClick=0;
+function openReunionGate(){
+  reunionClicks=0;reunionKey.value='';reunionFeedback.textContent='';
+  openModal(reunionGate);reunionGate._returnFocus=reunionEntry;reunionKey.focus();
+}
+reunionEntry.addEventListener('click',()=>{
+  const now=performance.now();
+  reunionClicks=now-reunionLastClick<900?reunionClicks+1:1;
+  reunionLastClick=now;
+  if(reunionClicks===5 && !document.querySelector('.modal.show'))openReunionGate();
+});
+function cancelReunionHold(){clearTimeout(reunionHold);reunionHold=null;}
+function startReunionHold(event){
+  if(event.type==='pointerdown' && event.button!==0)return;
+  if(reunionHold || document.querySelector('.modal.show'))return;
+  reunionHold=setTimeout(()=>{
+    reunionHold=null;openReunionGate();
+  },3000);
+}
+reunionEntry.addEventListener('pointerdown',startReunionHold);
+['pointerup','pointerleave','pointercancel','blur'].forEach(event=>reunionEntry.addEventListener(event,cancelReunionHold));
+window.addEventListener('pointerup',cancelReunionHold);
+window.addEventListener('blur',cancelReunionHold);
+document.addEventListener('visibilitychange',cancelReunionHold);
+reunionEntry.addEventListener('contextmenu',event=>event.preventDefault());
+reunionEntry.addEventListener('keydown',event=>{
+  if(event.key==='Enter'||event.key===' '){event.preventDefault();if(!event.repeat)startReunionHold(event);}
+  if(event.key==='Escape')cancelReunionHold();
+});
+reunionEntry.addEventListener('keyup',cancelReunionHold);
+document.getElementById('reunionForm').addEventListener('submit',async event=>{
+  event.preventDefault();
+  const attempt=++reunionAttempt;
+  const phrase=normalizePhrase(reunionKey.value).replace(/\s+/g,' ');
+  if(!phrase){reunionFeedback.textContent='Escribe la frase.';reunionKey.focus();return;}
+  if(!globalThis.crypto?.subtle){reunionFeedback.textContent='Abre el álbum desde su enlace HTTPS para continuar.';return;}
+  const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(phrase));
+  if(attempt!==reunionAttempt || !reunionGate.classList.contains('show'))return;
+  const hex=Array.from(new Uint8Array(hash),byte=>byte.toString(16).padStart(2,'0')).join('');
+  reunionKey.value='';
+  if(hex!==reunionDigest){reunionFeedback.textContent='Esa no es la frase.';reunionKey.focus();return;}
+  closeModal(reunionGate);
+  openModal(reunionModal);
+  reunionModal._returnFocus=reunionEntry;
+  resetReunionAnswers();
+  reunionPlayback.start(prefersReducedMotion?8:0);
+});
+const reunionRandom=seededRandom(201210);
+const reunionThreads=[];
+for(let i=0;i<540;i++){
+  let x,y;
+  do{x=reunionRandom()*2.5-1.25;y=reunionRandom()*2.6-1.2;}
+  while((x*x+y*y-1)**3-x*x*y*y*y>0);
+  const side=i%2?1:-1;
+  reunionThreads.push({x,y,side,angle:reunionRandom()*Math.PI*2,
+    startX:side*(1.3+reunionRandom()*.7),startY:(reunionRandom()-.5)*2.6,
+    delay:reunionRandom()*.8,radius:.45+reunionRandom()*.75});
+}
+function renderReunion(ctx,state){
+  const {width:w,height:h,time:t}=state;
+  const scale=Math.min(w*.29,h*.29),cx=w/2,cy=h*.46;
+  const progress=smooth((t-1)/5.5);
+  halo(ctx,cx,cy,scale*1.8,`rgba(143,100,178,${.08+progress*.08})`);
+  const positions=[];
+  for(const p of reunionThreads){
+    const gather=smooth((t-1-p.delay)/5);
+    const wander=(1-gather),pulse=prefersReducedMotion?1:1+Math.sin(t*1.4)*.013*progress;
+    const x=cx+(p.startX*(1-gather)+p.x*gather*pulse+Math.sin(t*.55+p.angle)*wander*.18)*scale;
+    const y=cy+(p.startY*(1-gather)-p.y*gather*pulse+Math.cos(t*.45+p.angle)*wander*.2)*scale;
+    positions.push({x,y});
+  }
+  // Threads cross inside the filled silhouette rather than drawing a heart outline.
+  ctx.lineWidth=.6;
+  for(let i=0;i<positions.length-1;i+=2){
+    const a=positions[i],b=positions[i+1],distance=Math.hypot(a.x-b.x,a.y-b.y);
+    if(distance>scale*.65)continue;
+    ctx.strokeStyle=`rgba(206,173,209,${progress*.13})`;
+    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+  }
+  for(let i=0;i<positions.length;i++){
+    const p=reunionThreads[i],point=positions[i];
+    ctx.globalAlpha=.3+.5*progress+(prefersReducedMotion?0:Math.sin(t*.7+p.angle)*.12);
+    ctx.fillStyle=p.side===1?'#edd29c':'#baa7e8';
+    ctx.beginPath();ctx.arc(point.x,point.y,p.radius,0,Math.PI*2);ctx.fill();
+    if(i%31===0)halo(ctx,point.x,point.y,5,p.side===1?'rgba(237,210,156,.24)':'rgba(186,167,232,.24)');
+  }
+  ctx.globalAlpha=1;
+  // Two luminous paths find each other at the centre as the particles settle.
+  if(progress<1){
+    for(const side of [-1,1]){
+      ctx.beginPath();
+      for(let j=0;j<=35;j++){
+        const q=clamp01(progress-j*.006),x=cx+side*(1-q)*scale*1.5,y=cy-Math.sin(q*Math.PI*2)*scale*.32;
+        j?ctx.lineTo(x,y):ctx.moveTo(x,y);
+      }
+      ctx.strokeStyle=side===1?'rgba(237,210,156,.65)':'rgba(186,167,232,.65)';ctx.lineWidth=1.1;ctx.stroke();
+    }
+  }
+  reunionQuestion.classList.toggle('is-revealed',t>=6.7 || prefersReducedMotion);
+  reunionChoices.hidden=reunionAnswered || !(t>=6.7 || prefersReducedMotion);
+}
+const reunionPlayback=canvasPlayback(document.getElementById('reunionCanvas'),renderReunion,reunionModal);
+document.getElementById('replayReunion').addEventListener('click',()=>{resetReunionAnswers();reunionPlayback.start(prefersReducedMotion?8:0);});
+document.addEventListener('album:modalchange',()=>{
+  if(!reunionGate.classList.contains('show')){reunionKey.value='';reunionAttempt++;}
+  if(!reunionModal.classList.contains('show') && reunionPlayback.state.active)reunionPlayback.stop();
+});
+
+const reunionChoices=document.getElementById('reunionChoices');
+const reunionNo=document.getElementById('reunionNo');
+const reunionYes=document.getElementById('reunionYes');
+const reunionAccepted=document.getElementById('reunionAccepted');
+const reunionAnswerStatus=document.getElementById('reunionAnswerStatus');
+let reunionNoAttempts=0,reunionAnswered=false;
+function resetReunionAnswers(){
+  reunionNoAttempts=0;reunionAnswered=false;
+  reunionChoices.hidden=true;reunionAccepted.hidden=true;
+  reunionNo.dataset.position='0';reunionNo.disabled=false;
+  reunionAnswerStatus.textContent='';
+  document.getElementById('reunionCanvas').hidden=false;
+  reunionQuestion.textContent='¿Quieres que lo volvamos a intentar?';
+}
+// One click is one attempt, including the click generated by touch or keyboard.
+// Do not also count pointerdown or mouseenter: that would double-count touches.
+reunionNo.addEventListener('click',()=>{
+  if(reunionAnswered)return;
+  if(reunionNoAttempts<3){
+    reunionNo.dataset.position=String(++reunionNoAttempts);
+    reunionAnswerStatus.textContent=reunionNoAttempts===3?'Ahora sí, tú decides.':'';
+    return;
+  }
+  reunionAnswered=true;reunionNo.disabled=true;
+  reunionPlayback.stop();audio.pause();
+  window.close();
+  // Browsers may refuse to close a tab opened by the user. Leave the album anyway.
+  if(!window.closed)window.location.replace('about:blank');
+});
+reunionYes.addEventListener('click',()=>{
+  if(reunionAnswered)return;
+  reunionAnswered=true;reunionPlayback.stop();
+  reunionChoices.hidden=true;document.getElementById('reunionCanvas').hidden=true;
+  reunionAccepted.hidden=false;
+  reunionQuestion.textContent='Un pasito a la vez. Juntos.';
+  reunionQuestion.classList.add('is-revealed');
+  reunionQuestion.setAttribute('tabindex','-1');reunionQuestion.focus();
+});
 
 show(0);
 setTrack(0, { autoplay: false, fade: false });
