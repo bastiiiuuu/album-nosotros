@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Work+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <meta name="description" content="Álbum romántico interactivo: contador, te amo en muchos idiomas, estrellas fugaces, viaje cósmico y un reloj de arena infinito." />
-  <link rel="stylesheet" href="css/style.css?v=20261001-answers">
+  <link rel="stylesheet" href="css/style.css?v=20261007-audio7">
 </head>
 <body>
   <div id="starfield"></div>
@@ -25,7 +25,7 @@
             <path d="M15 18l-6-6 6-6"/>
           </svg>
         </button>
-        <span class="header__page" id="pager" aria-live="polite">1 / 5</span>
+        <span class="header__page" id="pager" aria-live="polite">1 / 7</span>
         <button class="btn-icon" id="next" aria-label="Página siguiente">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M9 18l6-6-6-6"/>
@@ -39,6 +39,8 @@
       <button type="button" class="chapter" data-chapter="2" aria-controls="chapter-3"><span aria-hidden="true">03</span>Universo</button>
       <button type="button" class="chapter" data-chapter="3" aria-controls="chapter-4"><span aria-hidden="true">04</span>Reloj</button>
       <button type="button" class="chapter" data-chapter="4" aria-controls="chapter-5"><span aria-hidden="true">05</span>Para ti</button>
+      <button type="button" class="chapter" data-chapter="5" aria-controls="chapter-6"><span aria-hidden="true">06</span>Océano</button>
+      <button type="button" class="chapter" data-chapter="6" aria-controls="chapter-7"><span aria-hidden="true">07</span>Gargantua</button>
     </nav>
 
     <section class="page page--active" data-page="1" id="chapter-1">
@@ -149,6 +151,11 @@
           <canvas id="vizCanvas"></canvas>
         </div>
 
+        <div class="language-tools">
+          <label for="languageSearch">Encuentra tus palabras</label>
+          <input id="languageSearch" type="search" placeholder="Buscar un idioma o una frase…" autocomplete="off" aria-controls="loveGrid" />
+          <p id="languageCount" role="status"></p>
+        </div>
         <div class="love-grid" id="loveGrid"></div>
 
         <h3 class="section-heading">Razones por las que te amo</h3>
@@ -342,6 +349,29 @@
       </div>
     </section>
 
+    <section class="page page--ocean" data-page="6" id="chapter-6" aria-label="Nuestro océano bioluminiscente">
+      <iframe id="oceanFrame" title="Nuestro océano: álbum submarino 3D" data-src="oceano.html?v=20261007-gargantua" allow="fullscreen"></iframe>
+      <a class="ocean-expand" href="oceano.html">Abrir océano a pantalla completa ↗</a>
+    </section>
+
+    <section class="page page--gargantua" data-page="7" id="chapter-7" aria-labelledby="gargantuaTitle">
+      <canvas id="gargantuaCanvas" role="img" tabindex="0" aria-label="Gargantua interactivo. Flechas para orbitar, más y menos para zoom, Inicio para restablecer" aria-describedby="gargantuaHelp"></canvas>
+      <div class="gargantua-vignette" aria-hidden="true"></div>
+      <header class="gargantua-header">
+        <button type="button" class="gargantua-button" id="gargantuaBack">← Volver al océano</button>
+        <span class="gargantua-coordinate">CAPÍTULO 07 / MÁS ALLÁ DEL TIEMPO</span>
+        <button type="button" class="gargantua-button" id="gargantuaHome">Inicio ↗</button>
+      </header>
+      <div class="gargantua-heading"><span class="gargantua-eyebrow">LA GRAVEDAD DE LO QUE SIENTO</span><h2 id="gargantuaTitle">Gargantua</h2><p>Hasta donde el tiempo se detiene.</p><p id="gargantuaHelp">Arrastra para orbitar · Rueda o pellizco para acercarte</p></div>
+      <div class="gargantua-controls" role="group" aria-label="Controles de Gargantua">
+        <button type="button" class="gargantua-button" id="gargantuaPause" aria-pressed="false" disabled>Pausar materia</button>
+        <label>Distancia<input id="gargantuaZoom" type="range" min="1.8" max="45" step=".1" value="23" disabled /></label>
+        <label>Luminosidad<input id="gargantuaExposure" type="range" min=".7" max="3" step=".1" value="1.8" disabled /></label>
+        <button type="button" class="gargantua-button" id="gargantuaReset" disabled>Restablecer vista</button>
+      </div>
+      <p id="gargantuaStatus" class="gargantua-status" role="status">Preparando la luz…</p>
+    </section>
+
     <div id="finalMessageModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
       <div class="modal__backdrop" data-close></div>
       <div class="modal__dialog modal__dialog--final" role="document">
@@ -365,6 +395,7 @@
   </div>
 
   <div id="player" class="player" role="region" aria-label="Música del álbum">
+    <audio id="albumAudio" preload="metadata" loop></audio>
     <button class="btn-icon btn-icon--player" id="prevTrack" aria-label="Pista anterior">
       <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
         <path d="M6 5v14M18 5 8 12l10 7V5z"/>
@@ -376,7 +407,8 @@
         <path d="M18 5v14M6 5l10 7-10 7V5z"/>
       </svg>
     </button>
-    <span id="nowPlaying" class="player__track"></span>
+    <select id="nowPlaying" class="player__track" aria-label="Seleccionar pista" aria-describedby="playerStatus"></select>
+    <span id="playerStatus" class="player__status" role="status"></span>
     <button type="button" class="btn-icon player__collapse" id="collapsePlayer" aria-label="Contraer reproductor" aria-expanded="true" aria-controls="playerTimeline">⌄</button>
     <input id="vol" type="range" min="0" max="1" step="0.01" value="0.6" aria-label="Volumen" class="player__volume" />
     <div class="player__timeline" id="playerTimeline">
@@ -386,6 +418,6 @@
     </div>
   </div>
 
-  <script src="js/app.js?v=20261001-answers"></script>
+  <script src="js/app.js?v=20261007-audio7"></script>
 </body>
 </html>

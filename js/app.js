@@ -22,6 +22,7 @@ function initStarfield() {
   }
   if (prefersReducedMotion) return;
   function spawnShootingStar() {
+    if (document.hidden || document.body.classList.contains('gargantua-active')) return;
     const star = document.createElement('div');
     star.className = 'shooting-star';
     const startX = Math.random() * innerWidth * 0.7;
@@ -57,6 +58,35 @@ const pages = Array.from(document.querySelectorAll('.page'));
 let idx = 0;
 const pager = document.getElementById('pager');
 
+let gargantuaView = null;
+let gargantuaModule = null;
+let gargantuaGeneration = 0;
+
+async function syncGargantua(active) {
+  const generation = ++gargantuaGeneration;
+  if (!active) { gargantuaView?.stop(); return; }
+  try {
+    gargantuaModule ||= import('../gargantua.js?v=20261007-orbit').catch(error => { gargantuaModule = null; throw error; });
+    const { GargantuaView } = await gargantuaModule;
+    if (generation !== gargantuaGeneration || pageNum(pages[idx]) !== 7) return;
+    gargantuaView ||= new GargantuaView(document.getElementById('gargantuaCanvas'), {
+      pause: document.getElementById('gargantuaPause'),
+      zoom: document.getElementById('gargantuaZoom'),
+      exposure: document.getElementById('gargantuaExposure'),
+      reset: document.getElementById('gargantuaReset'),
+      status: document.getElementById('gargantuaStatus')
+    });
+    gargantuaView.start();
+  } catch (error) {
+    if (generation !== gargantuaGeneration) return;
+    document.getElementById('gargantuaStatus').textContent = 'No se pudo cargar la escena. Vuelve a entrar para intentarlo otra vez.';
+    console.error('Gargantua:', error);
+  }
+}
+
+window.addEventListener('pagehide', () => { ++gargantuaGeneration; gargantuaView?.dispose(); gargantuaView = null; });
+window.addEventListener('pageshow', event => { if (event.persisted) syncGargantua(pageNum(pages[idx]) === 7); });
+
 function pageNum(el) {
   return el ? Number(el.dataset.page) : null;
 }
@@ -70,15 +100,27 @@ function show(i) {
   pages.forEach((p, k) => {
     p.style.setProperty('--page-from', i < prev ? '-18px' : '18px');
     p.classList.toggle('page--active', k === idx);
+    p.setAttribute('aria-hidden', String(k !== idx));
+    p.inert = k !== idx;
   });
   document.querySelectorAll('[data-chapter]').forEach((button, k) => {
     if (k === idx) button.setAttribute('aria-current', 'page');
     else button.removeAttribute('aria-current');
   });
+  const isGargantua = pageNum(pages[idx]) === 7;
+  document.body.classList.toggle('gargantua-active', isGargantua);
+  syncGargantua(isGargantua);
+  if (isGargantua) document.getElementById('gargantuaBack').focus({ preventScroll: true });
+  else if (pageNum(pages[prev]) === 7) document.querySelector(`[data-chapter="${idx}"]`)?.focus({ preventScroll: true });
   pager.textContent = (idx + 1) + ' / ' + pages.length;
   if (pageNum(pages[idx]) === 3) startScene();
   if (pageNum(pages[idx]) === 4) startHourglass();
   if (idx === 1) resizeViz();
+  syncViz();
+  const oceanFrame = document.getElementById('oceanFrame');
+  if (pageNum(pages[idx]) === 6) {
+    if (!oceanFrame.hasAttribute('src')) oceanFrame.src = oceanFrame.dataset.src;
+  } else if (oceanFrame.hasAttribute('src')) oceanFrame.removeAttribute('src');
   if (idx !== 1 && rainRunning) {
     stopRain(); rainRunning = false;
     toggleRainLabel.textContent = 'Lluvia de "Te amo"';
@@ -86,18 +128,24 @@ function show(i) {
   }
   window.scrollTo({ top: 0, behavior: 'instant' });
   const targetIdx = pageToTrackIndex[idx] ?? 0;
-  if (tracks[targetIdx] && new URL(tracks[targetIdx].src, document.baseURI).href !== audio.src) {
+  if (isGargantua) {
+    setTrack(6, { autoplay: true, fade: false });
+  } else if (tracks[targetIdx] && new URL(tracks[targetIdx].src, document.baseURI).href !== audio.src) {
     setTrack(targetIdx, { autoplay: !audio.paused, fade: true });
   }
 }
 
 document.querySelectorAll('[data-chapter]').forEach(button => button.addEventListener('click', () => show(Number(button.dataset.chapter))));
 
+document.getElementById('gargantuaBack').onclick = () => show(5);
+document.getElementById('gargantuaHome').onclick = () => show(0);
+
 document.getElementById('prev').onclick = () => show(idx - 1);
 document.getElementById('next').onclick = () => show(idx + 1);
 
 document.addEventListener('keydown', e => {
   if (e.target.closest('input, textarea, select, [contenteditable]') || document.querySelector('.modal.show') || e.altKey || e.ctrlKey || e.metaKey) return;
+  if (e.key === 'Escape' && pageNum(pages[idx]) === 7) show(5);
   if (e.key === 'ArrowRight') show(idx + 1);
   if (e.key === 'ArrowLeft') show(idx - 1);
   if (e.key === 'm' || e.key === 'M') {
@@ -110,6 +158,7 @@ document.addEventListener('keydown', e => {
   let touchY = null;
   let startTime = null;
   document.querySelectorAll('.page').forEach(p => {
+    if (p.dataset.page === '7') return;
     p.addEventListener('touchstart', e => {
       if (e.target.closest('button, input, [role=button]')) { touchX = null; return; }
       const t = e.changedTouches[0];
@@ -203,28 +252,37 @@ function setIcon(el, key) {
   el.innerHTML = `<span class="btn-icon__svg">${Icons[key]}</span>`;
 }
 
-const audio = new Audio();
-audio.preload = 'auto';
-audio.loop = true;
-
+const audio = document.getElementById('albumAudio');
 const playBtn = document.getElementById('playPause');
 const prevBtn = document.getElementById('prevTrack');
 const nextBtn = document.getElementById('nextTrack');
 const volEl = document.getElementById('vol');
 const nowPlaying = document.getElementById('nowPlaying');
+const playerStatus = document.getElementById('playerStatus');
 
 const tracks = [
-  { id: 'p1', src: 'audio/musica1.mp3', title: 'Destello...' },
-  { id: 'p2', src: 'audio/musica2.mp3', title: 'I Wanna Be Yours' },
-  { id: 'p3', src: 'audio/ambiente.mp3', title: 'Sparks' },
-  { id: 'p4', src: 'audio/pista_p4.mp3', title: 'Apocalypse' },
+  { id: 1, src: 'audio/musica1.mp3' },
+  { id: 2, src: 'audio/musica2.mp3' },
+  { id: 3, src: 'audio/ambiente.mp3' },
+  { id: 4, src: 'audio/pista_p4.mp3' },
+  { id: 5, src: 'audio/5.mp3' },
+  { id: 6, src: 'audio/6.mp3' },
+  { id: 7, src: 'audio/7.mp3' }
 ];
-
 const pageToTrackIndex = { 0: 0, 1: 1, 2: 2, 3: 3, 4: 0 };
+for (const track of tracks) {
+  const option = document.createElement('option');
+  option.value = String(track.id);
+  option.textContent = String(track.id);
+  nowPlaying.appendChild(option);
+}
 
 let currentIdx = 0;
 let isFading = false;
-
+let fadeTimer = null;
+let trackVersion = 0;
+let pendingPlay = null;
+let wantsPlayback = false;
 let savedVol = null;
 try { savedVol = localStorage.getItem('love.vol'); } catch {}
 if (savedVol !== null && Number.isFinite(Number(savedVol))) volEl.value = Math.max(0, Math.min(1, Number(savedVol)));
@@ -233,73 +291,99 @@ audio.volume = Number(volEl.value);
 function uiUpdatePlaying(playing) {
   setIcon(playBtn, playing ? 'pause' : 'play');
   playBtn.setAttribute('aria-label', playing ? 'Pausar' : 'Reproducir');
+  playBtn.setAttribute('aria-pressed', String(playing));
+  nowPlaying.classList.toggle('is-playing', playing);
 }
 
-uiUpdatePlaying(false);
+function stopFade() {
+  clearInterval(fadeTimer);
+  fadeTimer = null;
+  isFading = false;
+  audio.volume = Number(volEl.value);
+}
 
-// A transition belongs to one track request; a newer request cancels it.
-let fadeTimer = null;
-let trackVersion = 0;
+function startPlayback(version = trackVersion) {
+  if (version !== trackVersion || !wantsPlayback) return;
+  if (pendingPlay) {
+    pendingPlay.then(() => { if (version === trackVersion && wantsPlayback) startPlayback(version); });
+    return;
+  }
+  let attempt;
+  try { attempt = audio.play(); } catch (error) { attempt = Promise.reject(error); }
+  const request = Promise.resolve(attempt).then(() => {
+    if (version === trackVersion) {
+      playerStatus.textContent = '';
+      uiUpdatePlaying(!audio.paused);
+    }
+  }).catch(error => {
+    if (version !== trackVersion) return;
+    wantsPlayback = false;
+    uiUpdatePlaying(false);
+    if (error.name !== 'AbortError') playerStatus.textContent = error.name === 'NotAllowedError'
+      ? 'Pulsa reproducir para escuchar la pista ' + tracks[currentIdx].id + '.'
+      : 'No se pudo reproducir la pista ' + tracks[currentIdx].id + '.';
+  }).finally(() => { if (pendingPlay === request) pendingPlay = null; });
+  pendingPlay = request;
+}
+
 function setTrack(i, { autoplay = true, fade = true } = {}) {
+  const version = ++trackVersion;
+  const previousVolume = audio.volume;
+  const wasPlaying = !audio.paused;
+  stopFade();
   currentIdx = (i + tracks.length) % tracks.length;
   const track = tracks[currentIdx];
-  nowPlaying.textContent = track.title;
-  crossfadeTo(track.src, autoplay, fade);
-}
-function crossfadeTo(src, autoplay = true, fade = true) {
-  const version = ++trackVersion;
-  clearInterval(fadeTimer);
-  isFading = false;
+  nowPlaying.value = String(track.id);
+  playerStatus.textContent = '';
+  wantsPlayback = autoplay;
   const load = () => {
+    if (version !== trackVersion) return;
+    stopFade();
     audio.pause();
-    audio.src = src;
-    audio.volume = Number(volEl.value);
+    audio.src = track.src;
+    audio.load();
     uiUpdatePlaying(false);
-    if (!autoplay) return;
-    audio.play().then(() => {
-      if (version === trackVersion) uiUpdatePlaying(true);
-    }).catch(() => { if (version === trackVersion) uiUpdatePlaying(false); });
+    if (autoplay) startPlayback(version);
   };
-  if (!fade || audio.paused || !autoplay) { load(); return; }
+  if (!fade || !wasPlaying || !autoplay) { load(); return; }
   isFading = true;
+  const started = performance.now();
   fadeTimer = setInterval(() => {
-    audio.volume = Math.max(0, audio.volume - 0.12);
-    if (audio.volume <= 0.01) {
-      clearInterval(fadeTimer); isFading = false; load();
-    }
-  }, 40);
+    if (version !== trackVersion) return;
+    const progress = Math.min(1, (performance.now() - started) / 180);
+    audio.volume = Math.max(0, previousVolume * (1 - progress));
+    if (progress === 1) load();
+  }, 20);
 }
 
-playBtn.addEventListener('click', async () => {
-  if (isFading) {
-    clearInterval(fadeTimer); isFading = false; ++trackVersion;
-    audio.pause(); audio.src = tracks[currentIdx].src;
-    audio.volume = Number(volEl.value); uiUpdatePlaying(false); return;
+playBtn.addEventListener('click', () => {
+  if (wantsPlayback && (pendingPlay || !audio.paused || isFading)) {
+    const wasFading = isFading;
+    ++trackVersion;
+    wantsPlayback = false;
+    stopFade();
+    audio.pause();
+    if (wasFading) { audio.src = tracks[currentIdx].src; audio.load(); }
+    uiUpdatePlaying(false);
+    return;
   }
-  if (audio.src === '') {
+  playerStatus.textContent = '';
+  if (!audio.src || new URL(tracks[currentIdx].src, document.baseURI).href !== audio.src) {
     setTrack(currentIdx, { autoplay: true, fade: false });
     return;
   }
-  if (audio.paused) {
-    try {
-      await audio.play();
-      uiUpdatePlaying(true);
-    } catch (e) {
-      uiUpdatePlaying(false);
-    }
-  } else {
-    audio.pause();
-    uiUpdatePlaying(false);
-  }
+  wantsPlayback = true;
+  startPlayback(++trackVersion);
 });
 
 prevBtn.addEventListener('click', () => setTrack(currentIdx - 1));
 nextBtn.addEventListener('click', () => setTrack(currentIdx + 1));
-
+nowPlaying.addEventListener('change', () => setTrack(Number(nowPlaying.value) - 1));
 volEl.addEventListener('input', () => {
-  audio.volume = Number(volEl.value);
+  if (!isFading) audio.volume = Number(volEl.value);
   try { localStorage.setItem('love.vol', volEl.value); } catch {}
 });
+uiUpdatePlaying(false);
 
 const sinceEl = document.getElementById('since');
 const lineEl = document.getElementById('line');
@@ -446,34 +530,166 @@ document.addEventListener('keydown', e => {
 });
 
 const loveWords = [
-  ["Te amo", "Español"],
-  ["I love you", "English"],
-  ["Je t'aime", "Français"],
-  ["Ti amo", "Italiano"],
-  ["Ich liebe dich", "Deutsch"],
-  ["Eu te amo", "Português"],
-  ["愛してる", "日本語"],
-  ["사랑해", "한국어"],
-  ["我爱你", "中文"],
-  ["Я тебя люблю", "Русский"],
-  ["أحبك", "العربية"],
-  ["Te iubesc", "Română"],
-  ["Seni seviyorum", "Türkçe"],
-  ["Ik hou van jou", "Nederlands"],
-  ["Σ' αγαπώ", "Ελληνικά"],
-  ["Aku cinta kamu", "Indonesia"],
-  ["Aš tave myliu", "Lietuvių"],
-  ["Kocham Cię", "Polski"],
-  ["Ég elska þig", "Íslenska"],
-  ["Te sakam", "Македонски"],
-  ["मैं तुमसे प्यार करता हूँ", "हिन्दी"],
-  ["Mwen renmen ou", "Kreyòl"],
-  ["Ngiyakuthanda", "Zulu"],
-  ["Ndagukunda", "Kinyarwanda"],
-  ["Aloha wau iā 'oe", "ʻŌlelo Hawaiʻi"],
-  ["Te dua", "Shqip"],
-  ["Volim te", "Hrvatski"],
-  ["Milujĕ tě", "Čeština"]
+  [
+    "Te amo",
+    "Español"
+  ],
+  [
+    "I love you",
+    "English"
+  ],
+  [
+    "Je t'aime",
+    "Français"
+  ],
+  [
+    "Ti amo",
+    "Italiano"
+  ],
+  [
+    "Ich liebe dich",
+    "Deutsch"
+  ],
+  [
+    "Eu te amo",
+    "Português"
+  ],
+  [
+    "愛してる",
+    "日本語"
+  ],
+  [
+    "사랑해",
+    "한국어"
+  ],
+  [
+    "我爱你",
+    "中文"
+  ],
+  [
+    "Я тебя люблю",
+    "Русский"
+  ],
+  [
+    "أحبك",
+    "العربية"
+  ],
+  [
+    "Te iubesc",
+    "Română"
+  ],
+  [
+    "Seni seviyorum",
+    "Türkçe"
+  ],
+  [
+    "Ik hou van jou",
+    "Nederlands"
+  ],
+  [
+    "Σ' αγαπώ",
+    "Ελληνικά"
+  ],
+  [
+    "Aku cinta kamu",
+    "Indonesia"
+  ],
+  [
+    "Aš tave myliu",
+    "Lietuvių"
+  ],
+  [
+    "Kocham Cię",
+    "Polski"
+  ],
+  [
+    "Ég elska þig",
+    "Íslenska"
+  ],
+  [
+    "Te sakam",
+    "Македонски"
+  ],
+  [
+    "मैं तुमसे प्यार करता हूँ",
+    "हिन्दी"
+  ],
+  [
+    "Mwen renmen ou",
+    "Kreyòl"
+  ],
+  [
+    "Ngiyakuthanda",
+    "Zulu"
+  ],
+  [
+    "Ndagukunda",
+    "Kinyarwanda"
+  ],
+  [
+    "Aloha wau iā 'oe",
+    "ʻŌlelo Hawaiʻi"
+  ],
+  [
+    "Te dua",
+    "Shqip"
+  ],
+  [
+    "Volim te",
+    "Hrvatski"
+  ],
+  [
+    "Miluji tě",
+    "Čeština"
+  ],
+  [
+    "Jag älskar dig",
+    "Svenska"
+  ],
+  [
+    "Jeg elsker deg",
+    "Norsk"
+  ],
+  [
+    "Jeg elsker dig",
+    "Dansk"
+  ],
+  [
+    "Minä rakastan sinua",
+    "Suomi"
+  ],
+  [
+    "T’estimo",
+    "Català"
+  ],
+  [
+    "Quérote",
+    "Galego"
+  ],
+  [
+    "Mi amas vin",
+    "Esperanto"
+  ],
+  [
+    "Te amo",
+    "Latina"
+  ],
+  [
+    "Nakupenda",
+    "Kiswahili"
+  ],
+  [
+    "Mahal kita",
+    "Tagalog"
+  ],
+  [
+    "Я тебе кохаю",
+    "Українська"
+  ],
+  [
+    "Szeretlek",
+    "Magyar"
+  ]
 ];
 
 const loveGrid = document.getElementById('loveGrid');
@@ -482,10 +698,27 @@ loveWords.forEach(w => {
   const d = document.createElement('button');
   d.type = 'button';
   d.className = 'love';
-  d.innerHTML = `${w[0]} <small>${w[1]}</small>`;
+  const phrase = document.createElement('bdi'); phrase.textContent = w[0];
+  const language = document.createElement('small'); language.textContent = w[1];
+  d.append(phrase, language);
+  d.dataset.search = normalizePhrase(w.join(' '));
   d.addEventListener('click', () => addReason(`${w[0]} — por ${randomReasonFragment()}`));
   loveGrid.appendChild(d);
 });
+
+const languageSearch = document.getElementById('languageSearch');
+const languageCount = document.getElementById('languageCount');
+function filterLanguages() {
+  const query = normalizePhrase(languageSearch.value);
+  let visible = 0;
+  loveGrid.querySelectorAll('.love').forEach(card => {
+    card.hidden = !card.dataset.search.includes(query);
+    if (!card.hidden) visible++;
+  });
+  languageCount.textContent = query ? visible + ' de ' + loveWords.length + ' idiomas' : loveWords.length + ' formas de decir te amo';
+}
+languageSearch.addEventListener('input', filterLanguages);
+filterLanguages();
 
 const defaultReasons = [
   "cómo iluminas mis días con una sonrisa",
@@ -565,6 +798,7 @@ function stopRain() {
 let audioCtx = null;
 let analyser = null;
 let vizData = null;
+let vizFrame = 0;
 const vizCanvas = document.getElementById('vizCanvas');
 const vctx = vizCanvas.getContext('2d');
 
@@ -587,10 +821,17 @@ function ensureAnalyser() {
   src.connect(analyser);
   analyser.connect(audioCtx.destination);
   vizData = new Uint8Array(analyser.frequencyBinCount);
-  requestAnimationFrame(vizLoop);
+}
+
+function syncViz() {
+  cancelAnimationFrame(vizFrame);
+  vizFrame = 0;
+  if (analyser && idx === 1 && !audio.paused && !document.hidden) vizFrame = requestAnimationFrame(vizLoop);
 }
 
 function vizLoop() {
+  vizFrame = 0;
+  if (idx !== 1 || audio.paused || document.hidden) return;
   if (analyser) {
     analyser.getByteFrequencyData(vizData);
     const w = vizCanvas.clientWidth;
@@ -603,18 +844,27 @@ function vizLoop() {
       vctx.fillRect(i * barW, h - bh, barW * 0.9, bh);
     }
   }
-  requestAnimationFrame(vizLoop);
+  vizFrame = requestAnimationFrame(vizLoop);
 }
 
+document.addEventListener('visibilitychange', syncViz);
 audio.addEventListener('play', () => {
-  ensureAnalyser();
-  if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
-  uiUpdatePlaying(true);
+  try {
+    ensureAnalyser();
+    syncViz();
+    if (audioCtx?.state === 'suspended') audioCtx.resume().catch(() => {});
+  } catch {}
+  uiUpdatePlaying(!audio.paused);
 });
-audio.addEventListener('pause', () => uiUpdatePlaying(false));
-audio.addEventListener('error', () => { uiUpdatePlaying(false); nowPlaying.textContent = 'No se pudo cargar la pista'; });
+audio.addEventListener('pause', () => { syncViz(); uiUpdatePlaying(!audio.paused); });
+audio.addEventListener('error', () => {
+  if (!audio.error) return;
+  wantsPlayback = false;
+  syncViz();
+  uiUpdatePlaying(false);
+  playerStatus.textContent = 'No se pudo cargar la pista ' + tracks[currentIdx].id + '.';
+});
 
-// Stable, time-based renderers shared by the two canvas experiences.
 const clamp01 = value => Math.max(0, Math.min(1, value));
 const smooth = value => { const t = clamp01(value); return t * t * (3 - 2 * t); };
 function seededRandom(seed) {
@@ -682,7 +932,6 @@ const galaxyLocations = Array.from({ length: 65 }, (_, i) => {
     angle: spaceRandom() * Math.PI, phase: i * .9 };
 });
 
-// Expensive textures are drawn once, never randomized during animation.
 function createGalaxyTexture() {
   const texture = document.createElement('canvas'); texture.width = 600; texture.height = 400;
   const ctx = texture.getContext('2d'), random = seededRandom(428);
@@ -987,7 +1236,6 @@ function polygonArea(points){
   for(let i=0;i<points.length;i++){const a=points[i],b=points[(i+1)%points.length];sum+=a.x*b.y-b.x*a.y;}
   return Math.abs(sum)/2;
 }
-// Two gravity-aligned slopes form a small pile without creating or losing sand.
 function clipHalfPlane(points,distance){
   const result=[];
   for(let i=0;i<points.length;i++){
@@ -1041,7 +1289,6 @@ function drawFrame(ctx,angle){
     ctx.strokeStyle='rgba(255,231,185,.45)';ctx.lineWidth=.008;
     ctx.beginPath();ctx.moveTo(-.8,side*1.075-.025);ctx.lineTo(.8,side*1.075-.025);ctx.stroke();
   }
-  // Narrow metal waist and reflections along the glass shoulders.
   ctx.fillStyle='#a9906e';ctx.beginPath();ctx.roundRect(-.075,-.026,.15,.052,.012);ctx.fill();
   ctx.strokeStyle='rgba(240,249,255,.42)';ctx.lineWidth=.016;ctx.lineCap='round';
   for(const sign of [-1,1]){
@@ -1140,7 +1387,6 @@ document.querySelectorAll('.modal').forEach(modal => {
   });
 });
 
-// The secret is a keepsake unlock, saved only in this browser.
 const constellationModal = document.getElementById('constellationModal');
 const constellationButton = document.getElementById('openConstellation');
 let constellationSaved = false;
@@ -1201,7 +1447,6 @@ document.getElementById('collapsePlayer').addEventListener('click', event => {
 });
 updateTimeline();
 
-// A deliberately hidden keepsake; no access state is persisted or sent anywhere.
 const reunionEntry=document.getElementById('reunionEntry');
 const reunionGate=document.getElementById('reunionGate');
 const reunionModal=document.getElementById('reunionModal');
@@ -1281,7 +1526,6 @@ function renderReunion(ctx,state){
     const y=cy+(p.startY*(1-gather)-p.y*gather*pulse+Math.cos(t*.45+p.angle)*wander*.2)*scale;
     positions.push({x,y});
   }
-  // Threads cross inside the filled silhouette rather than drawing a heart outline.
   ctx.lineWidth=.6;
   for(let i=0;i<positions.length-1;i+=2){
     const a=positions[i],b=positions[i+1],distance=Math.hypot(a.x-b.x,a.y-b.y);
@@ -1297,7 +1541,6 @@ function renderReunion(ctx,state){
     if(i%31===0)halo(ctx,point.x,point.y,5,p.side===1?'rgba(237,210,156,.24)':'rgba(186,167,232,.24)');
   }
   ctx.globalAlpha=1;
-  // Two luminous paths find each other at the centre as the particles settle.
   if(progress<1){
     for(const side of [-1,1]){
       ctx.beginPath();
@@ -1332,8 +1575,6 @@ function resetReunionAnswers(){
   document.getElementById('reunionCanvas').hidden=false;
   reunionQuestion.textContent='¿Quieres que lo volvamos a intentar?';
 }
-// One click is one attempt, including the click generated by touch or keyboard.
-// Do not also count pointerdown or mouseenter: that would double-count touches.
 reunionNo.addEventListener('click',()=>{
   if(reunionAnswered)return;
   if(reunionNoAttempts<3){
@@ -1344,7 +1585,6 @@ reunionNo.addEventListener('click',()=>{
   reunionAnswered=true;reunionNo.disabled=true;
   reunionPlayback.stop();audio.pause();
   window.close();
-  // Browsers may refuse to close a tab opened by the user. Leave the album anyway.
   if(!window.closed)window.location.replace('about:blank');
 });
 reunionYes.addEventListener('click',()=>{
@@ -1359,4 +1599,3 @@ reunionYes.addEventListener('click',()=>{
 
 show(0);
 setTrack(0, { autoplay: false, fade: false });
-nowPlaying.textContent = tracks[0].title;

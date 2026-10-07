@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#030b14">
+  <title>Nuestro océano · Álbum de nosotros</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,400;0,500;1,400&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=20261006-journey">
+  <script type="importmap">
+    {"imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+      "gsap": "https://cdn.jsdelivr.net/npm/gsap@3.13.0/index.js"
+    }}
+  </script>
+</head>
+<body>
+  <main id="oceanApp">
+    <div id="seascape" aria-hidden="true"><canvas id="oceanCanvas"></canvas></div>
+    <div class="vignette" aria-hidden="true"></div>
+    <header class="ocean-header">
+      <a class="wordmark" href="index.html" target="_top" aria-label="Volver al álbum">n <span class="wordmark-wave">≈</span> <span class="brand-caption">ÁLBUM DE NOSOTROS</span></a>
+      <div class="world-controls">
+        <button id="motion" type="button" aria-pressed="false" disabled>Pausar agua</button>
+        <button id="quality" type="button" aria-pressed="false" disabled>Modo ligero</button>
+        <button id="home" type="button" aria-label="Volver a la vista panorámica" disabled>↺</button>
+      </div>
+    </header>
+    <section class="introduction" aria-labelledby="oceanTitle">
+      <p class="eyebrow"><span class="live-dot"></span> CAPÍTULO 06 · BAJO LA SUPERFICIE</p>
+      <h1 id="oceanTitle">Nuestro<br>pequeño <em>océano.</em></h1>
+      <p class="intro-copy">Hay cosas que brillan más en la profundidad.<br>Como todo lo que guardo de nosotros.</p>
+      <button id="explore" class="primary" type="button">Sumergirme <span aria-hidden="true">↘</span></button>
+    </section>
+    <div class="depth-mark" aria-hidden="true"><span>SUPERFICIE</span><i></i><span>∞</span><small>LO QUE SIENTO</small></div>
+    <aside id="journeyHud" class="journey-hud" aria-label="Tu recorrido">
+      <div class="journey-topline"><span class="eyebrow">EL OCÉANO RECUERDA</span><span id="journeyCount">0 / 5</span></div>
+      <div id="journeyMeter" class="journey-meter" role="progressbar" aria-label="Perlas descubiertas" aria-valuemin="0" aria-valuemax="5" aria-valuenow="0"></div>
+      <p id="journeyChapter">Cada recuerdo enciende algo</p>
+      <p id="journeyPhrase" class="journey-phrase" aria-label="Nuestra frase"></p>
+      <div class="journey-buttons"><button type="button" id="watchMeeting" hidden>Ver nuestro encuentro</button><button type="button" id="resetJourney" disabled>Empezar otra vez</button></div>
+      <small id="journeySaved">Tu recorrido se guarda en este navegador</small>
+    </aside>
+    <div id="wordCurrent" class="word-current" aria-hidden="true"></div>
+    <section id="finalePanel" class="finale-panel" aria-labelledby="finaleTitle" hidden>
+      <svg class="finale-art" viewBox="0 0 400 270" role="img" aria-label="Dos medusas, una turquesa y otra rosa, unen sus tentáculos formando un corazón">
+        <defs><linearGradient id="meetingGradient"><stop stop-color="#77e2cf"/><stop offset="1" stop-color="#e4a0d1"/></linearGradient></defs>
+        <g fill="none" stroke="url(#meetingGradient)" stroke-width="1.5">
+          <path d="M114 70Q148 85 200 103C133 35 57 128 200 241C343 128 267 35 200 103Q252 85 286 70"/>
+          <path d="M123 70Q151 91 200 107C137 42 67 132 200 234C333 132 263 42 200 107Q249 91 277 70" opacity=".6"/>
+          <path d="M104 70Q143 85 198 98C129 29 48 125 200 249C352 125 271 29 202 98Q257 85 296 70" opacity=".35"/>
+        </g>
+        <path d="M77 70C75 8 155 8 153 70Q115 89 77 70Z" fill="#77e2cf33" stroke="#77e2cf"/>
+        <path d="M247 70C245 8 325 8 323 70Q285 89 247 70Z" fill="#e4a0d133" stroke="#e4a0d1"/>
+        <g fill="#eed9ae"><circle cx="73" cy="155" r="2"/><circle cx="324" cy="183" r="2"/><circle cx="197" cy="53" r="1.5"/></g>
+      </svg>
+      <p class="eyebrow">CINCO RECUERDOS · UN ENCUENTRO</p>
+      <h2 id="finaleTitle" tabindex="-1">Dos corrientes. Un mismo lugar.</h2>
+      <p id="finaleSubtitle" role="status">Lo que fuimos guardando nos acerca.</p>
+      <button id="skipMeeting" class="quiet-button" type="button">Ver el final</button>
+      <div id="finaleActions" class="finale-actions" hidden>
+        <button id="contemplate" class="primary" type="button">Quedarme aquí</button>
+        <button id="repeatMeeting" class="quiet-button" type="button">Repetir encuentro</button>
+      </div>
+      <button id="backToOcean" class="quiet-button back-ocean" type="button">Volver al océano</button>
+    </section>
+    <button id="exitContemplate" class="exit-contemplate quiet-button" type="button" hidden>Mostrar controles</button>
+
+    <div id="labels" aria-label="Perlas de recuerdos"></div>
+    <p id="sceneStatus" class="scene-status" role="status">Encendiendo la bioluminiscencia…</p>
+    <footer class="ocean-footer">
+      <div class="collection-heading"><span class="eyebrow">CINCO LUCES · UNA HISTORIA</span><span class="gesture-hint">Arrastra para explorar · Toca una perla</span></div>
+      <nav id="memoryNav" class="memory-nav" aria-label="Nuestros recuerdos">
+        <button type="button" data-memory="0"><span>01</span>Nuestro tiempo<i></i></button>
+        <button type="button" data-memory="1"><span>02</span>En cada idioma<i></i></button>
+        <button type="button" data-memory="2"><span>03</span>Mi universo<i></i></button>
+        <button type="button" data-memory="3"><span>04</span>Para siempre<i></i></button>
+        <button type="button" data-memory="4"><span>05</span>Para ti<i></i></button>
+      </nav>
+      <div class="footer-note"><span>DESDE EL 10.12.2022</span><span>Un mundo pequeño. Un amor inmenso.</span><span>HECHO PARA NOSOTROS</span></div>
+    </footer>
+  </main>
+  <dialog id="resetJourneyDialog" aria-labelledby="resetTitle">
+    <h2 id="resetTitle">¿Volvemos al principio?</h2>
+    <p>Las cinco perlas volverán a esperar su descubrimiento y el océano despertará de nuevo contigo.</p>
+    <div class="reset-actions"><button type="button" id="cancelReset" class="quiet-button">Seguir aquí</button><button type="button" id="confirmReset" class="primary">Reiniciar recorrido</button></div>
+  </dialog>
+  <dialog id="memoryDialog" aria-labelledby="memoryTitle">
+    <div class="memory-shell">
+      <button class="close" id="closeMemory" aria-label="Cerrar recuerdo" type="button">×</button>
+      <div class="memory-art" aria-hidden="true">
+        <div class="pearl-caption"><span class="eyebrow">UNA LUZ DE NOSOTROS</span><span id="artNumber">01</span></div>
+        <div class="pearl-stage">
+          <svg class="memory-pearl" viewBox="0 0 240 180" focusable="false">
+            <defs>
+              <radialGradient id="pearlHalo"><stop stop-color="currentColor" stop-opacity=".24"/><stop offset="1" stop-color="currentColor" stop-opacity="0"/></radialGradient>
+              <radialGradient id="pearlBody" cx="32%" cy="25%" r="80%"><stop stop-color="#e6fff8"/><stop offset=".22" stop-color="currentColor" stop-opacity=".8"/><stop offset=".65" stop-color="#173b4c"/><stop offset="1" stop-color="#031321"/></radialGradient>
+              <radialGradient id="pearlShine" cx="32%" cy="25%"><stop stop-color="#fff" stop-opacity=".95"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+            </defs>
+            <ellipse cx="120" cy="96" rx="104" ry="80" fill="url(#pearlHalo)"/>
+            <g class="pearl-orbit-back" fill="none" stroke="currentColor" stroke-opacity=".32"><ellipse cx="120" cy="94" rx="96" ry="29" transform="rotate(-18 120 94)"/></g>
+            <g class="pearl-float">
+              <circle cx="120" cy="90" r="47" fill="url(#pearlBody)" stroke="currentColor" stroke-opacity=".8" stroke-width="1.2"/>
+              <circle cx="108" cy="76" r="25" fill="url(#pearlShine)"/>
+              <path d="M84 109Q115 137 153 111" fill="none" stroke="currentColor" stroke-opacity=".65"/>
+              <path d="M91 60Q113 42 140 57" fill="none" stroke="#effffa" stroke-opacity=".8" stroke-linecap="round"/>
+            </g>
+            <g class="pearl-dust" fill="currentColor"><circle cx="51" cy="52" r="1.5"/><circle cx="187" cy="116" r="2"/><circle cx="162" cy="39" r="1.2"/><circle cx="72" cy="141" r="1"/></g>
+          </svg>
+        </div>
+      </div>
+      <div class="memory-content">
+        <p class="eyebrow" id="memoryNumber"></p><h2 id="memoryTitle"></h2>
+        <p id="memoryDate" class="memory-date"></p><div id="memoryText"></div>
+        <div class="memory-bottom"><span>Guardado aquí, contigo.</span><button id="nextMemory" type="button">Siguiente luz →</button></div>
+      </div>
+    </div>
+  </dialog>
+  <noscript><div class="noscript">Activa JavaScript para explorar el océano. <a href="index.html" target="_top">Volver al álbum</a></div></noscript>
+  <script type="module" src="main.js?v=20261006-journey"></script>
+</body>
+</html>
