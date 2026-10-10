@@ -6,6 +6,8 @@ void main(){vUV=aPosition*.5+.5;gl_Position=vec4(aPosition,0.0,1.0);}
 
 const blurFragment=`
 precision highp float;
+precision highp int;
+precision highp sampler2D;
 uniform sampler2D uImage;
 uniform vec2 uStep;
 uniform float uExtract;
@@ -21,14 +23,36 @@ gl_FragColor=vec4(c,1.0);
 
 const compositeFragment=`
 precision highp float;
+precision highp int;
+precision highp sampler2D;
 uniform sampler2D uScene;
 uniform sampler2D uBloom;
 uniform sampler2D uWide;
 uniform float uExposure;
+uniform vec2 uTexel;
 varying vec2 vUV;
 vec3 film(vec3 x){return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),0.0,1.0);}
+float luminance(vec3 color){float value=dot(color,vec3(.299,.587,.114));return value/(1.0+value);}
+vec3 antialiasScene(){
+  vec3 center=texture2D(uScene,vUV).rgb;
+  float middle=luminance(center);
+  float nw=luminance(texture2D(uScene,vUV+vec2(-1.0,1.0)*uTexel).rgb);
+  float ne=luminance(texture2D(uScene,vUV+uTexel).rgb);
+  float sw=luminance(texture2D(uScene,vUV-uTexel).rgb);
+  float se=luminance(texture2D(uScene,vUV+vec2(1.0,-1.0)*uTexel).rgb);
+  float low=min(middle,min(min(nw,ne),min(sw,se))),high=max(middle,max(max(nw,ne),max(sw,se)));
+  float contrast=high-low,threshold=max(.025,high*.18);
+  if(contrast<threshold)return center;
+  vec2 direction=vec2(-((nw+ne)-(sw+se)),(nw+sw)-(ne+se));
+  float reduce=max((nw+ne+sw+se)*.03125,.0078125);
+  direction=clamp(direction/(min(abs(direction.x),abs(direction.y))+reduce),vec2(-2.0),vec2(2.0))*uTexel;
+  vec3 a=.5*(texture2D(uScene,vUV-direction/6.0).rgb+texture2D(uScene,vUV+direction/6.0).rgb);
+  vec3 b=a*.5+.25*(texture2D(uScene,vUV-direction*.5).rgb+texture2D(uScene,vUV+direction*.5).rgb);
+  float value=luminance(b);
+  return mix(center,value<low||value>high?a:b,smoothstep(threshold,threshold*2.0,contrast));
+}
 void main(){
-vec3 scene=texture2D(uScene,vUV).rgb;
+vec3 scene=antialiasScene();
 vec3 bloom=texture2D(uBloom,vUV).rgb;
 vec3 wide=texture2D(uWide,vUV).rgb;
 vec3 color=film((scene+bloom*.7+wide*.48)*uExposure*3.0);
@@ -61,6 +85,7 @@ vColor=aColor;vShape=aShape;vWorld=aPosition;
 
 const particleFragment=`
 precision highp float;
+precision highp int;
 uniform mat3 uRotation;
 uniform float uDistance;
 varying vec4 vColor;
@@ -101,7 +126,7 @@ export class GargantuaCinematic {
       this.textureType=this.floating?(modern?this.gl.HALF_FLOAT:half.HALF_FLOAT_OES):this.gl.UNSIGNED_BYTE;
       this.textureFormat=this.floating&&modern?this.gl.RGBA16F:this.gl.RGBA;
       this.blur=this.program(quadVertex,blurFragment,['uImage','uStep','uExtract'],['aPosition']);
-      this.composite=this.program(quadVertex,compositeFragment,['uScene','uBloom','uWide','uExposure'],['aPosition']);
+      this.composite=this.program(quadVertex,compositeFragment,['uScene','uBloom','uWide','uExposure','uTexel'],['aPosition']);
       this.particles=this.program(particleVertex,particleFragment,['uRotation','uDistance','uProjection'],['aPosition','aColor','aShape']);
       this.stream=this.gl.createBuffer();if(!this.stream)throw Error('No se pudo reservar la geometría');this.buffers.push(this.stream);
       this.gl.bindBuffer(this.gl.ARRAY_BUFFER,this.stream);this.gl.bufferData(this.gl.ARRAY_BUFFER,this.vertices.byteLength,this.gl.DYNAMIC_DRAW);
@@ -114,7 +139,6 @@ export class GargantuaCinematic {
     const gl=this.gl,modern=this.view.canvas.dataset.glVersion==='2';
     const vs=modern?'#version 300 es\n'+vertex.replaceAll('attribute','in').replaceAll('varying','out'):vertex;
     let fs=modern?'#version 300 es\n'+fragment.replace('precision highp float;','precision highp float;\nout vec4 outColor;').replaceAll('varying','in').replaceAll('texture2D','texture').replaceAll('gl_FragColor','outColor'):fragment;
-    if(!modern&&!gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER,gl.HIGH_FLOAT)?.precision)fs=fs.replace('precision highp float;','precision mediump float;');
     let v=null,f=null,handle=null;
     try{
       v=this.view.compile(gl.VERTEX_SHADER,vs);f=this.view.compile(gl.FRAGMENT_SHADER,fs);handle=gl.createProgram();if(!handle)throw Error('No se pudo crear el programa');
@@ -216,7 +240,7 @@ export class GargantuaCinematic {
     this.blurPass(this.smallB,this.wideA,3,0);this.blurPass(this.wideA,this.wideB,0,2);
     const gl=this.gl,u=this.composite.uniforms;this.quad(this.composite,null);
     this.texture(0,this.scene.texture,u.uScene);this.texture(1,this.smallB.texture,u.uBloom);this.texture(2,this.wideB.texture,u.uWide);
-    gl.uniform1f(u.uExposure,this.view.exposure);gl.drawArrays(gl.TRIANGLES,0,6);gl.activeTexture(gl.TEXTURE0);
+    gl.uniform1f(u.uExposure,this.view.exposure);gl.uniform2f(u.uTexel,1/this.width,1/this.height);gl.drawArrays(gl.TRIANGLES,0,6);gl.activeTexture(gl.TEXTURE0);
   }
   dispose(){this.clearTargets();for(const p of this.programs)this.gl.deleteProgram(p);for(const b of this.buffers)this.gl.deleteBuffer(b);this.programs.length=0;this.buffers.length=0;}
 }

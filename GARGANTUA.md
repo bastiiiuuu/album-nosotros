@@ -44,7 +44,13 @@ La imagen y la geometría se componen antes del resplandor. El postprocesado usa
 
 ## Rendimiento y validación
 
-El DPR está limitado a 2. El presupuesto inicial es de 420.000 píxeles en pantallas menores de 768 px y de 820.000 en escritorio. La resolución desciende si el promedio de 90 frames supera 19,5 ms y se recupera gradualmente tras cuatro ventanas estables por debajo de 17,4 ms; la simulación avanza por tiempo transcurrido. El encuadre reserva espacio para título y controles.
+El búfer del canvas y la superficie principal del renderizador usan exactamente `floor(canvas.clientWidth × min(devicePixelRatio, 2))` por `floor(canvas.clientHeight × min(devicePixelRatio, 2))`. No hay presupuesto de píxeles ni reducción de resolución ligada a los FPS. El viewport y el uniform de resolución se sincronizan con esas dimensiones. Solo las superficies auxiliares del resplandor trabajan a media y cuarta resolución; la imagen principal y la composición final mantienen la resolución nativa.
+
+ResizeObserver, los eventos de tamaño y orientación, visualViewport y una consulta de resolución del dispositivo detectan los cambios de tamaño y DPR, también con la escena pausada. Las superficies gráficas se reutilizan cuando el tamaño no cambia y se liberan al salir del capítulo.
+
+Los fragment shaders declaran alta precisión para float e int; las texturas del postprocesado también usan samplers de alta precisión. Se solicita antialiasing nativo. El anillo de fotones y las bandas radiales se filtran según la huella del píxel, y la composición aplica suavizado direccional únicamente a contornos de contraste alto. La simulación avanza por tiempo transcurrido y el encuadre reserva espacio para título y controles.
+
+Las mediciones que siguen corresponden a versiones anteriores con resolución adaptativa. No describen el rendimiento de la versión nativa, cuyo coste aumenta con la densidad de píxeles y depende de la GPU.
 
 En una prueba de la implementación base, de 5,5 segundos con órbita y zoom continuos, WebGL 2 registró 60 FPS a un viewport de 1440 × 900: promedio de 16,69 ms y percentil 95 de 16,8 ms, con buffer de 1239 × 775. Con las experiencias se volvió a comprobar la vista de 390 × 844 y se observaron 60 FPS. Son pruebas en el equipo de desarrollo, no mediciones en hardware móvil. Los 60 FPS son el objetivo adaptativo, no una garantía para todas las GPU.
 
@@ -61,3 +67,9 @@ En la medición aislada de WebGL 2, 180 frames dieron un promedio de 16,89 ms y 
 Se verificaron las superficies de render, el límite del buffer de geometría, la liberación de texturas y framebuffers, los gestos, la alineación, el modo cine, la pausa y la reconstrucción completa tras perder el contexto. Las rutas de audio y las páginas 1 a 6 conservan su implementación.
 
 El respaldo RGBA8 también pasó las pruebas de WebGL 1: 16,69 ms de media y 17,30 ms de percentil 95 a 1280 × 720. Se compararon los píxeles de dos instantes para confirmar que plasma y luz cambian realmente con el tiempo. La vista móvil de 390 × 844 conserva el mensaje completo y no presenta desbordamiento horizontal.
+
+## Corrección de nitidez del 10 de octubre de 2026
+
+Se retiraron el presupuesto de píxeles y el escalado adaptativo descritos en las mediciones históricas. Las comprobaciones de la versión nativa pasaron en WebGL 1 y 2 con DPR simulados de 1, 1,25, 2 y 3, incluido el límite efectivo de 2, las dimensiones CSS distintas de las de la ventana, el giro con la escena pausada y la persistencia de resolución ante fotogramas lentos. Se verificaron las dimensiones del canvas, la superficie principal, el viewport y el uniform, la reutilización y liberación de superficies, y la ausencia de errores GL.
+
+La regresión pasó en WebGL 2 con HDR y en WebGL 1 con RGBA8: gestos, zoom, alineación, modo cine, un único RAF pendiente, cambio temporal de píxeles y pérdida y recuperación de contexto. La cámara y la señal se comprobaron con tiempo de simulación controlado porque el navegador de pruebas ralentizaba los fotogramas en segundo plano. Estas pruebas no certifican una cifra de FPS ni sustituyen pruebas en teléfonos físicos.
