@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Work+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <meta name="description" content="Álbum romántico interactivo: contador, te amo en muchos idiomas, estrellas fugaces, viaje cósmico y un reloj de arena infinito." />
-  <link rel="stylesheet" href="css/style.css?v=20261007-audio7">
+  <link rel="stylesheet" href="css/style.css?v=20261010-cinematic">
 </head>
 <body>
   <div id="starfield"></div>
@@ -355,20 +355,31 @@
     </section>
 
     <section class="page page--gargantua" data-page="7" id="chapter-7" aria-labelledby="gargantuaTitle">
-      <canvas id="gargantuaCanvas" role="img" tabindex="0" aria-label="Gargantua interactivo. Flechas para orbitar, más y menos para zoom, Inicio para restablecer" aria-describedby="gargantuaHelp"></canvas>
+      <canvas id="gargantuaCanvas" role="img" tabindex="0" aria-label="Gargantua interactivo. Flechas para orbitar, más y menos para zoom, Enter para lanzar una estrella, Inicio para restablecer" aria-describedby="gargantuaHelp"></canvas>
       <div class="gargantua-vignette" aria-hidden="true"></div>
       <header class="gargantua-header">
         <button type="button" class="gargantua-button" id="gargantuaBack">← Volver al océano</button>
         <span class="gargantua-coordinate">CAPÍTULO 07 / MÁS ALLÁ DEL TIEMPO</span>
-        <button type="button" class="gargantua-button" id="gargantuaHome">Inicio ↗</button>
+        <div class="gargantua-header-actions"><button type="button" class="gargantua-button" id="gargantuaCinema" aria-pressed="false" disabled>Modo cine</button><button type="button" class="gargantua-button" id="gargantuaHome">Inicio ↗</button></div>
       </header>
-      <div class="gargantua-heading"><span class="gargantua-eyebrow">LA GRAVEDAD DE LO QUE SIENTO</span><h2 id="gargantuaTitle">Gargantua</h2><p>Hasta donde el tiempo se detiene.</p><p id="gargantuaHelp">Arrastra para orbitar · Rueda o pellizco para acercarte</p></div>
-      <div class="gargantua-controls" role="group" aria-label="Controles de Gargantua">
+      <div class="gargantua-heading"><span class="gargantua-eyebrow">LA GRAVEDAD DE LO QUE SIENTO</span><h2 id="gargantuaTitle">Gargantua</h2><p>Hasta donde el tiempo se detiene.</p><p id="gargantuaHelp">Arrastra para orbitar · Toca para lanzar una estrella<br>Rueda o pellizco para acercarte</p>
+        <aside id="gargantuaSignalPanel" class="gargantua-signal" aria-label="Nuestra señal" hidden>
+          <div id="gargantuaSignalSearch"><span class="gargantua-eyebrow">DOS LUCES · UNA COINCIDENCIA</span><h3>Encuentra nuestro punto de vista.</h3><p id="gargantuaSignalHint">Acerca las dos estrellas hasta que sean una.</p><meter id="gargantuaSignalMeter" min="0" max="1" value="0" aria-label="Alineación de las estrellas"></meter><button type="button" class="gargantua-text-button" id="gargantuaSignalAssist">Seguir la señal</button></div>
+          <div id="gargantuaSignalRevealed" hidden><span class="gargantua-eyebrow">TE ENCONTRARÍA EN CUALQUIER UNIVERSO</span><p class="gargantua-quote" tabindex="-1">Incluso aquí,<br>volvería a encontrarte.</p><button type="button" class="gargantua-text-button" id="gargantuaSignalReplay">Volver a alinear</button></div>
+          <button type="button" class="gargantua-signal-close" id="gargantuaSignalClose" aria-label="Cerrar nuestra señal">×</button>
+        </aside>
+      </div>
+      <button type="button" class="gargantua-ocean-link" id="gargantuaBridge" aria-expanded="false" aria-controls="gargantuaBridgePanel" aria-label="Estrellas del océano"><span aria-hidden="true">✧</span><span class="gargantua-bridge-label">Del océano al cielo</span><span id="gargantuaBridgeCount">0 / 5</span></button>
+      <aside id="gargantuaBridgePanel" class="gargantua-bridge-panel" aria-labelledby="gargantuaBridgeTitle" hidden><button type="button" class="gargantua-signal-close" id="gargantuaBridgeClose" aria-label="Cerrar estrellas del océano">×</button><span class="gargantua-eyebrow">LA MISMA HISTORIA, OTRA LUZ</span><h3 id="gargantuaBridgeTitle">Tus perlas también<br>son estrellas.</h3><p id="gargantuaBridgeCopy">Cada perla que abras encenderá una estrella aquí.</p><ol id="gargantuaBridgeList"></ol><button type="button" class="gargantua-button" id="gargantuaOceanVisit">Seguir en el océano ↗</button></aside>
+      <div id="gargantuaTools" class="gargantua-tools" role="group" aria-label="Explorar Gargantua"><button type="button" class="gargantua-button" id="gargantuaSignal" aria-pressed="false" disabled>Buscar señal</button><button type="button" class="gargantua-button" id="gargantuaLaunch" disabled>Lanzar estrella <span aria-hidden="true">✦</span></button><button type="button" class="gargantua-button" id="gargantuaSettings" aria-expanded="false" aria-controls="gargantuaSettingsPanel">Ajustes</button></div>
+      <div class="gargantua-controls" id="gargantuaSettingsPanel" role="group" aria-label="Controles de Gargantua" hidden>
         <button type="button" class="gargantua-button" id="gargantuaPause" aria-pressed="false" disabled>Pausar materia</button>
         <label>Distancia<input id="gargantuaZoom" type="range" min="1.8" max="45" step=".1" value="23" disabled /></label>
-        <label>Luminosidad<input id="gargantuaExposure" type="range" min=".7" max="3" step=".1" value="1.8" disabled /></label>
+        <label>Luminosidad<input id="gargantuaExposure" type="range" min=".7" max="3" step=".05" value="1.35" disabled /></label>
         <button type="button" class="gargantua-button" id="gargantuaReset" disabled>Restablecer vista</button>
       </div>
+      <button type="button" class="gargantua-button gargantua-cinema-exit" id="gargantuaCinemaExit" hidden>Salir del modo cine ↗</button>
+      <p id="gargantuaFeedback" class="gargantua-feedback" role="status"></p>
       <p id="gargantuaStatus" class="gargantua-status" role="status">Preparando la luz…</p>
     </section>
 
@@ -418,6 +429,6 @@
     </div>
   </div>
 
-  <script src="js/app.js?v=20261007-audio7"></script>
+  <script src="js/app.js?v=20261010-cinematic"></script>
 </body>
 </html>

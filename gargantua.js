@@ -1,3 +1,6 @@
+import { GargantuaCinematic } from './gargantua-cinematic.js?v=20261010-cinematic';
+import { GargantuaExperience } from './gargantua-experience.js?v=20261010-cinematic';
+
 const vertexSource = `
 attribute vec2 aPosition;
 void main(){gl_Position=vec4(aPosition,0.0,1.0);}
@@ -10,7 +13,6 @@ uniform float u_time;
 uniform vec3 u_cameraPos;
 uniform mat3 u_cameraRot;
 uniform float u_zoom;
-uniform float uExposure;
 uniform vec2 uFraming;
 const float PI=3.14159265359;
 float hash(vec2 p){vec3 p3=fract(vec3(p.xyx)*.1031);p3+=dot(p3,p3.yzx+33.33);return fract((p3.x+p3.y)*p3.z);}
@@ -33,50 +35,26 @@ vec3 stars(vec3 direction){
   return color;
 }
 vec3 diskEmission(vec3 p,vec3 direction){
-  float radius=length(p.xz);
-  float inner=smoothstep(2.25,2.75,radius),outer=1.0-smoothstep(7.2,8.8,radius);
-  float angle=atan(p.z,p.x),omega=9.5/pow(max(radius,1.0),1.5);
-  float flow=angle-u_time*omega;
-  float turbulence=fbm(vec2(radius*3.8+sin(flow)*2.0-u_time*.4,cos(flow)*4.2+sin(u_time*.7+radius)));
-  float bands=.45+.55*pow(.5+.5*sin(radius*24.0+turbulence*5.0-sin(flow)*.65),2.0);
-  float filaments=.3+.7*fbm(vec2(radius*9.0+sin(flow)*2.0,cos(flow)*8.0));
-  vec3 tangent=normalize(vec3(-p.z,0.0,p.x));
-  float toward=dot(tangent,-normalize(direction));
-  float beta=.7*sqrt(1.0/max(radius,1.0));
-  float doppler=sqrt(1.0-beta*beta)/max(.2,1.0-beta*toward);
-  float redshift=sqrt(max(.02,1.0-1.0/radius));
-  float beaming=pow(doppler*redshift,3.0)*exp(toward*.8);
-  float temperature=pow(2.5/max(radius,2.5),1.5);
-  vec3 tint=mix(vec3(.16,.002,.12),vec3(.85,.008,.93),smoothstep(-.85,.65,toward));
-  tint=mix(tint,vec3(.953,.91,1.0),clamp(temperature*.6+max(toward,0.0)*.22,0.0,.9));
-  float shock=pow(.5+.5*sin(radius*5.0-u_time*3.2+sin(flow*3.0)),12.0);
-  float flare=.85+.25*sin(flow*5.0+u_time*1.2)+shock*.9;
-  return tint*inner*outer*temperature*bands*filaments*beaming*flare*3.6;
-}
-vec3 infall(vec3 p,vec3 direction,float stepSize){
-  float radius=length(p.xz);
-  if(radius<1.03||radius>11.5||abs(p.y)>.85)return vec3(0.0);
-  float angle=atan(p.z,p.x);
-  float spiral=angle*5.0+19.0*log(radius)-u_time*1.75;
-  float thread=pow(.5+.5*cos(spiral),38.0);
-  float fall=pow(radius,1.5)*.28+u_time*.8;
-  float packet=fract(fall),stretch=.045+.16/radius;
-  float knot=exp(-pow((packet-.64)/stretch,2.0));
-  float wake=exp(-max(0.0,packet-.64)*6.0)*smoothstep(.57,.65,packet);
-  float height=sin(angle*3.0+radius*1.5-u_time*1.2)*.12;
-  float volume=exp(-abs(p.y-height)*(14.0+radius));
+  float radius=length(p.xz),angle=atan(p.z,p.x);
+  float edge=smoothstep(2.75,3.15,radius)*(1.0-smoothstep(7.0,9.1,radius));
+  float omega=7.8/pow(max(radius,1.0),1.5),flow=angle-u_time*omega;
+  vec2 curl=vec2(cos(flow),sin(flow));
+  float turbulence=fbm(curl*4.0+vec2(radius*3.1,-radius*2.7));
+  float fine=fbm(curl*8.0+vec2(radius*9.0,radius*2.0));
+  float bands=.93+.07*sin(radius*16.0+turbulence*5.0);
+  float filaments=.18+1.1*pow(clamp(turbulence*.6+fine*.7,0.0,1.0),2.1);
   float toward=dot(normalize(vec3(-p.z,0.0,p.x)),-normalize(direction));
-  float beaming=exp(toward*1.25)*sqrt(max(.01,1.0-1.0/radius));
-  float envelope=smoothstep(1.03,1.45,radius)*(1.0-smoothstep(9.0,11.5,radius));
-  float debris=thread*(knot*8.0+wake*.75+.13);
-  float plasma=.02*(.6+.4*sin(spiral*.6+u_time*2.0));
-  vec3 tint=mix(vec3(.26,.003,.16),vec3(.9,.3,1.0),smoothstep(-.5,.8,toward));
-  tint=mix(tint,vec3(1.0,.9,1.0),knot*.65);
-  return tint*(debris+plasma)*volume*envelope*beaming*stepSize*2.7;
+  float beta=.64*sqrt(1.0/max(radius,1.0));
+  float doppler=sqrt(1.0-beta*beta)/max(.2,1.0-beta*toward);
+  float beaming=pow(doppler,3.0)*sqrt(max(.02,1.0-1.0/radius));
+  float heat=pow(3.0/max(radius,3.0),1.65);
+  vec3 color=mix(vec3(.14,.009,.3),vec3(.56,.1,1.0),heat);
+  color=mix(color,vec3(.94,.78,1.0),pow(heat,2.0)*.65+max(toward,0.0)*.22);
+  float flare=1.0+.14*sin(flow*3.0+radius*.8)+.1*sin(flow*7.0-radius*1.5);
+  return color*edge*heat*bands*filaments*beaming*flare*1.8;
 }
 void main(){
   vec2 uv=(gl_FragCoord.xy-vec2(.5*uResolution.x,uFraming.y*uResolution.y))/uResolution.y;
-  float aspect=uResolution.x/uResolution.y;
   float focal=uFraming.x*clamp(pow(u_zoom/8.0,1.8),.035,1.0);
   vec3 camera=u_cameraPos;
   vec3 right=u_cameraRot[0],up=u_cameraRot[1],forward=-u_cameraRot[2];
@@ -86,15 +64,16 @@ void main(){
   vec3 p=origin+velocity*entry;
   vec3 angular=cross(p,velocity);
   float h2=dot(angular,angular),closest=30.0,captured=0.0;
+  if(h2>156.25){gl_FragColor=vec4(stars(normalize(velocity-camera*.001))*.28,1.0);return;}
   vec3 emission=vec3(0.0);
   vec3 nearest=p;
   float optical=0.0;
-  for(int i=0;i<190;i++){
+  for(int i=0;i<160;i++){
     float r2=dot(p,p),r=sqrt(r2);
     if(r<closest){closest=r;nearest=p;}
     if(r<1.0){captured=1.0;break;}
     if(r>28.0)break;
-    float stepSize=clamp(r*.055,.045,.7);
+    float stepSize=clamp(r*.088,.045,.9);
     vec3 acceleration=-1.5*(h2/r2)*(p/r)/r2;
     vec3 midVelocity=velocity+acceleration*stepSize*.5;
     vec3 previous=p;
@@ -102,31 +81,27 @@ void main(){
     float nextR2=max(dot(p,p),.01);
     velocity=midVelocity-1.5*(h2/nextR2)*(p/sqrt(nextR2))/nextR2*stepSize*.5;
     float radius=length(p.xz);
-    emission+=infall(p,velocity,stepSize)*exp(-optical);
-    if(radius>2.25&&radius<8.8){
+
+    if(radius>2.75&&radius<9.1){
       if(previous.y*p.y<0.0){
         float fraction=abs(previous.y)/max(abs(previous.y)+abs(p.y),.00001);
         vec3 crossing=mix(previous,p,fraction);
-        float pathWeight=min(2.5,.16/max(abs(normalize(velocity).y),.065));
+        float pathWeight=min(2.1,.36/max(abs(normalize(velocity).y),.12));
         emission+=diskEmission(crossing,velocity)*pathWeight*exp(-optical);
-        optical+=pathWeight*.32;
+        optical+=pathWeight*.55;
       }
-      float haze=exp(-abs(p.y)*1.7)*stepSize*.015;
+      float haze=exp(-abs(p.y)*3.8)*stepSize*.024;
       float pulse=.8+.2*sin(radius*3.0-u_time*1.8+atan(p.z,p.x)*2.0);
       emission+=vec3(.24,.002,.43)*haze*pow(2.5/radius,2.0)*pulse;
     }
   }
-  if(captured>.5){gl_FragColor=vec4(0.0,0.0,0.0,1.0);return;}
-  vec3 color=stars(normalize(velocity))*exp(-optical)+emission;
-  float photon=exp(-abs(closest-1.55)*22.0);
-  float radiation=.95+.2*sin(atan(nearest.z,nearest.x)*7.0-u_time*3.0)+.1*sin(u_time*5.3);
-  color+=vec3(.8,.12,1.0)*photon*1.9*radiation;
-  float impact=sqrt(h2);
-  color+=vec3(.075,.001,.14)*exp(-abs(impact-2.63)*1.4);
-  color=vec3(1.0)-exp(-color*uExposure);
-  color=pow(max(color,vec3(0.0)),vec3(.88));
-  float vignette=1.0-smoothstep(.3,1.5,length(uv/vec2(max(aspect,1.0),1.0)))*.35;
-  gl_FragColor=vec4(color*vignette,1.0);
+  vec3 color=stars(normalize(velocity))*exp(-optical)*(1.0-captured)+emission;
+  float impact=sqrt(h2),critical=2.598;
+  float photon=exp(-abs(impact-critical)*65.0)*(1.0-captured);
+  float radiation=.95+.06*sin(atan(nearest.z,nearest.x)*4.0-u_time*.7);
+  color+=vec3(.66,.22,1.0)*photon*.65*radiation;
+  color+=vec3(.025,.001,.055)*exp(-abs(impact-critical)*6.0)*(1.0-captured);
+  gl_FragColor=vec4(max(color,vec3(0.0))*.28,1.0);
 }
 `;
 
@@ -134,19 +109,20 @@ export class GargantuaView {
   constructor(canvas, controls) {
     this.canvas=canvas;this.controls=controls;this.gl=null;this.program=null;this.buffer=null;
     this.active=false;this.lost=false;this.frame=0;this.time=0;this.last=0;this.scale=1;
-    this.samples=[];this.warmup=0;this.motion=matchMedia('(prefers-reduced-motion: reduce)');this.paused=this.motion.matches;
-    this.exposure=1.8;this.destroyed=false;this.distance=23;this.targetDistance=23;
-    this.orientation=new Float32Array([-Math.sin(.07),0,0,Math.cos(.07)]);
+    this.samples=[];this.warmup=0;this.recovery=0;this.motion=matchMedia('(prefers-reduced-motion: reduce)');this.paused=this.motion.matches;
+    this.exposure=1.35;this.destroyed=false;this.distance=23;this.targetDistance=23;
+    this.orientation=new Float32Array([-Math.sin(.1),0,0,Math.cos(.1)]);
     this.targetOrientation=new Float32Array(this.orientation);this.rotation=new Float32Array(9);
-    this.points=new Map();this.velocityX=0;this.velocityY=0;this.gesture=null;this.touching=false;
+    this.points=new Map();this.velocityX=0;this.velocityY=0;this.gesture=null;this.touching=false;this.tapOrigin=null;
     this.abort=new AbortController();const signal=this.abort.signal;
     this.tick=this.tick.bind(this);
+    const root=canvas.closest('.page--gargantua');this.experience=root?new GargantuaExperience(this,root):null;
     document.addEventListener('visibilitychange',()=>{if(document.hidden){this.clearGesture();this.cancel();}else if(this.active)this.resume();},{signal});
     canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();this.lost=true;this.clearGesture();this.cancel();this.clearHandles();this.setStatus('La luz volverá en un instante…');},{signal});
     canvas.addEventListener('webglcontextrestored',()=>{this.lost=false;if(!this.active)return;try{this.initialize();this.resume();}catch(error){this.fail(error);}},{signal});
-    this.resizeObserver=new ResizeObserver(()=>{if(this.active&&!this.lost){this.resize();this.draw();}});
+    this.resizeObserver=new ResizeObserver(()=>{if(this.active&&!this.lost){this.resize();this.draw();this.wake();}});
     [canvas,controls.pause.parentElement,document.getElementById('player')].filter(Boolean).forEach(element=>this.resizeObserver.observe(element));
-    window.addEventListener('resize',()=>{if(this.active&&!this.lost){this.resize();this.draw();}},{signal});
+    window.addEventListener('resize',()=>{if(this.active&&!this.lost){this.resize();this.draw();this.wake();}},{signal});
     window.addEventListener('blur',()=>this.clearGesture(),{signal});
     this.motion.addEventListener('change',event=>{this.paused=event.matches;this.clearGesture();this.syncPause();if(this.active)this.resume();},{signal});
     controls.pause.addEventListener('click',()=>{this.paused=!this.paused;this.syncPause();if(this.active)this.resume();},{signal});
@@ -155,41 +131,50 @@ export class GargantuaView {
     controls.reset.addEventListener('click',()=>this.reset(),{signal});
     canvas.addEventListener('pointerdown',event=>{
       if(event.pointerType==='touch'||event.button!==0||!this.active||this.lost||!this.program)return;
+      this.experience?.interact();this.tapOrigin={x:event.clientX,y:event.clientY,time:performance.now(),moved:false};
       canvas.focus({preventScroll:true});canvas.setPointerCapture(event.pointerId);
       this.points.set(event.pointerId,{x:event.clientX,y:event.clientY});this.beginGesture();event.preventDefault();
     },{signal});
     canvas.addEventListener('pointermove',event=>{
       if(event.pointerType==='touch'||!this.points.has(event.pointerId))return;
+      if(this.tapOrigin&&Math.hypot(event.clientX-this.tapOrigin.x,event.clientY-this.tapOrigin.y)>8)this.tapOrigin.moved=true;
       this.points.set(event.pointerId,{x:event.clientX,y:event.clientY});this.moveGesture();
     },{signal});
     const release=event=>{
       if(event.pointerType==='touch'||!this.points.has(event.pointerId))return;
+      const tap=this.tapOrigin;this.tapOrigin=null;
       this.points.delete(event.pointerId);
       if(event.type!=='pointerup'||performance.now()-(this.gesture?.time||0)>100)this.velocityX=this.velocityY=0;
       if(canvas.hasPointerCapture(event.pointerId))canvas.releasePointerCapture(event.pointerId);
       this.endGesture();
+      if(event.type==='pointerup'&&tap&&!tap.moved&&performance.now()-tap.time<450)this.experience?.tap(event.clientX,event.clientY);
     };
     ['pointerup','pointercancel','lostpointercapture'].forEach(type=>canvas.addEventListener(type,release,{signal}));
     canvas.addEventListener('touchstart',event=>{
       if(!this.active||this.lost||!this.program)return;
+      this.experience?.interact();const first=event.touches[0];this.tapOrigin=event.touches.length===1?{x:first.clientX,y:first.clientY,time:performance.now(),moved:false}:null;
       event.preventDefault();canvas.focus({preventScroll:true});this.touching=true;this.readTouches(event);this.beginGesture();
     },{signal,passive:false});
     canvas.addEventListener('touchmove',event=>{
-      if(!this.touching)return;event.preventDefault();this.readTouches(event);this.moveGesture();
+      if(!this.touching)return;event.preventDefault();const first=event.touches[0];if(this.tapOrigin&&(!first||event.touches.length!==1||Math.hypot(first.clientX-this.tapOrigin.x,first.clientY-this.tapOrigin.y)>8))this.tapOrigin.moved=true;this.readTouches(event);this.moveGesture();
     },{signal,passive:false});
     const endTouch=event=>{
       if(!this.touching)return;event.preventDefault();this.readTouches(event);
+      const tap=this.tapOrigin;this.tapOrigin=null;
       if(event.type==='touchcancel'||performance.now()-(this.gesture?.time||0)>100)this.velocityX=this.velocityY=0;
       this.touching=this.points.size>0;this.endGesture();
+      if(event.type==='touchend'&&!this.points.size&&tap&&!tap.moved&&performance.now()-tap.time<450){const point=event.changedTouches[0];if(point)this.experience?.tap(point.clientX,point.clientY);}
     };
     ['touchend','touchcancel'].forEach(type=>canvas.addEventListener(type,endTouch,{signal,passive:false}));
     canvas.addEventListener('wheel',event=>{
       if(!this.active||this.lost||!this.program)return;
+      this.experience?.interact();
       event.preventDefault();const unit=event.deltaMode===1?16:event.deltaMode===2?innerHeight:1;
       this.setZoom(this.targetDistance*Math.exp(Math.max(-400,Math.min(400,event.deltaY*unit))*.0015));
     },{signal,passive:false});
     canvas.addEventListener('keydown',event=>{
       if(event.altKey||event.ctrlKey||event.metaKey)return;
+      if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','=','-','_','Home'].includes(event.key))this.experience?.interact();
       const directions={ArrowLeft:[-.13,0],ArrowRight:[.13,0],ArrowUp:[0,-.13],ArrowDown:[0,.13]};
       if(directions[event.key]){event.preventDefault();event.stopPropagation();this.rotate(...directions[event.key]);this.wake();}
       else if(['+','=','-','_','Home'].includes(event.key)){event.preventDefault();event.stopPropagation();if(event.key==='Home')this.reset();else this.setZoom(this.targetDistance*(event.key==='-'||event.key==='_'?1.12:1/1.12));}
@@ -222,7 +207,7 @@ export class GargantuaView {
     this.gesture=null;this.canvas.classList.remove('is-dragging');this.wake();
   }
   clearGesture(){
-    const ids=[...this.points.keys()];this.points.clear();this.gesture=null;this.touching=false;this.velocityX=this.velocityY=0;
+    const ids=[...this.points.keys()];this.points.clear();this.gesture=null;this.touching=false;this.tapOrigin=null;this.velocityX=this.velocityY=0;
     for(const id of ids)if(this.canvas.hasPointerCapture(id))this.canvas.releasePointerCapture(id);
     this.canvas.classList.remove('is-dragging');
   }
@@ -234,8 +219,9 @@ export class GargantuaView {
   }
   setZoom(distance){this.targetDistance=Math.max(1.8,Math.min(45,distance));this.controls.zoom.value=String(this.targetDistance);this.wake();}
   reset(){
-    this.clearGesture();this.targetOrientation.set([-Math.sin(.07),0,0,Math.cos(.07)]);this.targetDistance=23;this.exposure=1.8;
-    this.controls.zoom.value='23';this.controls.exposure.value='1.8';this.wake();
+    this.experience?.interact();
+    this.clearGesture();this.targetOrientation.set([-Math.sin(.1),0,0,Math.cos(.1)]);this.targetDistance=23;this.exposure=1.35;
+    this.controls.zoom.value='23';this.controls.exposure.value='1.35';this.wake();
   }
   updateCamera(){
     const [x,y,z,w]=this.orientation,m=this.rotation;
@@ -255,13 +241,16 @@ export class GargantuaView {
     const length=Math.hypot(...q);for(let i=0;i<4;i++)q[i]/=length;
     this.distance+=(this.targetDistance-this.distance)*blend;
     if(Math.abs(this.targetDistance-this.distance)<.001)this.distance=this.targetDistance;
+    const framingBlend=this.motion.matches?1:1-Math.exp(-5*dt);
+    this.focal+=(this.targetFocal-this.focal)*framingBlend;this.centerY+=(this.targetCenterY-this.centerY)*framingBlend;
+    const framing=Math.abs(this.targetFocal-this.focal)+Math.abs(this.targetCenterY-this.centerY)>.0001;
     this.updateCamera();
     let remaining=0;for(let i=0;i<4;i++)remaining+=Math.abs(q[i]-target[i]*sign);
-    return remaining>.0001||Math.abs(this.targetDistance-this.distance)>.001||Math.abs(this.velocityX)+Math.abs(this.velocityY)>.002;
+    return framing||remaining>.0001||Math.abs(this.targetDistance-this.distance)>.001||Math.abs(this.velocityX)+Math.abs(this.velocityY)>.002;
   }
   wake(){
-    if(!this.active||this.lost||document.hidden||!this.program)return;
-    if(this.motion.matches){this.orientation.set(this.targetOrientation);this.distance=this.targetDistance;this.updateCamera();this.draw();return;}
+    if(!this.active||this.lost||document.hidden||!this.program||this.ticking)return;
+    if(this.motion.matches){this.orientation.set(this.targetOrientation);this.distance=this.targetDistance;this.focal=this.targetFocal;this.centerY=this.targetCenterY;this.updateCamera();this.experience?.update(0);this.draw();if(!this.frame&&this.experience?.needsFrame()){this.last=performance.now();this.frame=requestAnimationFrame(this.tick);this.canvas.dataset.running='true';}return;}
     if(!this.frame){this.last=performance.now();this.frame=requestAnimationFrame(this.tick);this.canvas.dataset.running='true';}
   }
   compile(type,source){
@@ -289,74 +278,88 @@ export class GargantuaView {
     this.buffer=gl.createBuffer();if(!this.buffer)throw Error('No se pudo reservar el buffer');gl.bindBuffer(gl.ARRAY_BUFFER,this.buffer);
     gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);
     this.position=gl.getAttribLocation(this.program,'aPosition');
-    this.uniforms=Object.fromEntries(['uResolution','u_time','u_cameraPos','u_cameraRot','u_zoom','uExposure','uFraming'].map(name=>[name,gl.getUniformLocation(this.program,name)]));
+    this.uniforms=Object.fromEntries(['uResolution','u_time','u_cameraPos','u_cameraRot','u_zoom','uFraming'].map(name=>[name,gl.getUniformLocation(this.program,name)]));
     gl.disable(gl.DEPTH_TEST);gl.disable(gl.BLEND);gl.disable(gl.CULL_FACE);
-    this.canvas.dataset.glVersion=isWebGL2?'2':'1';delete this.canvas.dataset.failed;this.resize();this.setStatus('');
+    this.canvas.dataset.glVersion=isWebGL2?'2':'1';this.cinematic=new GargantuaCinematic(this);delete this.canvas.dataset.failed;this.resize();this.setStatus('');
     for(const control of ['pause','zoom','exposure','reset'])this.controls[control].disabled=false;
+    this.experience?.enable(true);
   }
   resize(){
     if(!this.gl||this.lost)return;
     const width=Math.max(1,window.innerWidth),height=Math.max(1,window.innerHeight);
-    const heading=this.canvas.parentElement.querySelector('.gargantua-heading');
-    const top=(heading?.getBoundingClientRect().bottom||height*.22)+18;
-    const bottom=this.controls.pause.parentElement.getBoundingClientRect().top-20;
+    const cinematic=this.experience?.cinema;
+    const top=cinematic?height*.13:height*(width<768?.3:.24);
+    const tools=this.experience?.ui.Tools;
+    const bottom=cinematic?height*.87:(tools?.getBoundingClientRect().top||height*.82)-20;
     const space=Math.max(100,bottom-top);
-    this.focal=1.65*Math.min(1,width/height/1.55,space/(height*.76));
-    this.centerY=1-(top+space*.5)/height;
+    this.targetFocal=1.48*Math.min(1,width/height/1.65,space/(height*.58));
+    this.targetCenterY=1-(top+space*.5)/height;
+    if(this.focal===undefined||this.motion.matches){this.focal=this.targetFocal;this.centerY=this.targetCenterY;}
     const dpr=Math.min(window.devicePixelRatio||1,2.0);
-    const budget=width<768?420000:960000;
+    const budget=width<768?420000:820000;
     const ratio=Math.min(dpr,Math.sqrt(budget/(width*height)))*this.scale;
     const w=Math.max(1,Math.round(width*ratio)),h=Math.max(1,Math.round(height*ratio));
     if(this.canvas.width!==w||this.canvas.height!==h){this.canvas.width=w;this.canvas.height=h;}
-    this.gl.viewport(0,0,w,h);this.canvas.dataset.renderScale=ratio.toFixed(2);
+    this.cinematic?.resize(w,h);this.gl.viewport(0,0,w,h);this.canvas.dataset.renderScale=ratio.toFixed(2);
+    this.experience?.resize();
   }
+  projectionFocal(){const elevation=Math.max(0,Math.min(1,(Math.abs(this.rotation[7])-.15)/.8));return this.focal/(1+.65*elevation*elevation*(3-2*elevation))*Math.max(.035,Math.min(1,Math.pow(this.distance/8,1.8)));}
   draw(){
     const gl=this.gl;if(!this.active||this.lost||!this.program||!gl)return;
+    this.cinematic?.begin();
     gl.useProgram(this.program);gl.bindBuffer(gl.ARRAY_BUFFER,this.buffer);gl.enableVertexAttribArray(this.position);gl.vertexAttribPointer(this.position,2,gl.FLOAT,false,0,0);
     gl.uniform2f(this.uniforms.uResolution,this.canvas.width,this.canvas.height);gl.uniform1f(this.uniforms.u_time,this.time);
     const elevation=Math.max(0,Math.min(1,(Math.abs(this.rotation[7])-.15)/.8));
     gl.uniform2f(this.uniforms.uFraming,this.focal/(1+.65*elevation*elevation*(3-2*elevation)),this.centerY);
     gl.uniformMatrix3fv(this.uniforms.u_cameraRot,false,this.rotation);
     gl.uniform3f(this.uniforms.u_cameraPos,this.rotation[6]*this.distance,this.rotation[7]*this.distance,this.rotation[8]*this.distance);
-    gl.uniform1f(this.uniforms.u_zoom,this.distance);gl.uniform1f(this.uniforms.uExposure,this.exposure);gl.drawArrays(gl.TRIANGLES,0,6);
+    gl.uniform1f(this.uniforms.u_zoom,this.distance);gl.drawArrays(gl.TRIANGLES,0,6);
+    this.cinematic?.finish(this.experience);
   }
   tick(now){
     this.frame=0;if(!this.active||this.lost||document.hidden)return;
+    this.ticking=true;
     const milliseconds=now-this.last;this.last=now;const dt=Math.min(milliseconds/1000,.05);
     if(!this.paused)this.time+=dt;
+    this.experience?.beforeCamera(dt);
     const moving=this.stepCamera(dt);
+    const experienceMoving=this.experience?.update(dt)||false;
     if(this.warmup++>45&&milliseconds>0){
       this.samples.push(milliseconds);
       if(this.samples.length===90){
         const average=this.samples.reduce((sum,value)=>sum+value,0)/this.samples.length;
         this.canvas.dataset.fps=String(Math.round(1000/average));
-        if(average>19.5&&this.scale>.35){this.scale=Math.max(.35,this.scale*.84);this.resize();}
+        if(average>19.5&&this.scale>.45){this.scale=Math.max(.45,this.scale*.84);this.recovery=0;this.resize();}
+        else if(average<17.4&&this.scale<1){if(++this.recovery===4){this.scale=Math.min(1,this.scale*1.08);this.recovery=0;this.resize();}}
+        else this.recovery=0;
         this.samples.length=0;
       }
     }
     this.draw();
-    if(!this.paused||moving)this.frame=requestAnimationFrame(this.tick);
+    this.ticking=false;
+    if(!this.paused||moving||experienceMoving)this.frame=requestAnimationFrame(this.tick);
     this.canvas.dataset.running=String(this.frame!==0);
   }
   start(){
     if(this.destroyed)return;this.active=true;this.canvas.dataset.active='true';
     if(this.lost)return;
-    try{if(!this.program)this.initialize();this.resume();}catch(error){this.fail(error);}
+    try{if(!this.program)this.initialize();this.experience?.start();this.resume();}catch(error){this.fail(error);}
   }
   resume(){
     this.cancel();if(!this.active||this.lost||document.hidden||!this.program)return;
-    this.resize();const moving=this.stepCamera(0);this.draw();this.last=performance.now();this.warmup=0;this.samples.length=0;
-    if(!this.paused||moving)this.frame=requestAnimationFrame(this.tick);
+    this.resize();const moving=this.stepCamera(0);this.experience?.update(0);this.draw();this.last=performance.now();this.warmup=0;this.samples.length=0;
+    if(!this.paused||moving||this.experience?.needsFrame())this.frame=requestAnimationFrame(this.tick);
     this.canvas.dataset.running=String(this.frame!==0);
   }
   cancel(){if(this.frame)cancelAnimationFrame(this.frame);this.frame=0;this.canvas.dataset.running='false';}
-  clearHandles(){this.program=null;this.buffer=null;this.uniforms=null;}
+  clearHandles(){this.program=null;this.buffer=null;this.uniforms=null;this.cinematic=null;}
   stop(){
     this.active=false;this.canvas.dataset.active='false';this.clearGesture();this.cancel();
+    this.experience?.stop();
     this.targetOrientation.set(this.orientation);this.targetDistance=this.distance;
-    if(this.gl&&!this.lost){this.gl.useProgram(null);this.gl.bindBuffer(this.gl.ARRAY_BUFFER,null);if(this.position>=0)this.gl.disableVertexAttribArray(this.position);if(this.program)this.gl.deleteProgram(this.program);if(this.buffer)this.gl.deleteBuffer(this.buffer);this.canvas.width=1;this.canvas.height=1;}
+    if(this.gl&&!this.lost){this.cinematic?.dispose();this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,null);this.gl.useProgram(null);this.gl.bindBuffer(this.gl.ARRAY_BUFFER,null);if(this.position>=0)this.gl.disableVertexAttribArray(this.position);if(this.program)this.gl.deleteProgram(this.program);if(this.buffer)this.gl.deleteBuffer(this.buffer);this.canvas.width=1;this.canvas.height=1;}
     this.clearHandles();
   }
-  fail(error){this.stop();console.error('Gargantua:',error);this.setStatus('Este dispositivo no pudo abrir la escena. Puedes volver al océano.');this.canvas.dataset.failed='true';for(const control of ['pause','zoom','exposure','reset'])this.controls[control].disabled=true;}
+  fail(error){this.stop();console.error('Gargantua:',error);this.setStatus('Este dispositivo no pudo abrir la escena. Puedes volver al océano.');this.canvas.dataset.failed='true';for(const control of ['pause','zoom','exposure','reset'])this.controls[control].disabled=true;this.experience?.enable(false);}
   dispose(){this.stop();this.resizeObserver.disconnect();this.abort.abort();this.destroyed=true;}
 }

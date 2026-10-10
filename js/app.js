@@ -66,7 +66,7 @@ async function syncGargantua(active) {
   const generation = ++gargantuaGeneration;
   if (!active) { gargantuaView?.stop(); return; }
   try {
-    gargantuaModule ||= import('../gargantua.js?v=20261007-orbit').catch(error => { gargantuaModule = null; throw error; });
+    gargantuaModule ||= import('../gargantua.js?v=20261010-cinematic').catch(error => { gargantuaModule = null; throw error; });
     const { GargantuaView } = await gargantuaModule;
     if (generation !== gargantuaGeneration || pageNum(pages[idx]) !== 7) return;
     gargantuaView ||= new GargantuaView(document.getElementById('gargantuaCanvas'), {
